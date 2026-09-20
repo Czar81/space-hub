@@ -1,22 +1,22 @@
-import jwt from "jsonwebtoken";
-import { env } from "@/core/config/env.config";
 import { IncomingHttpHeaders } from "http";
+import { JwtUserPayload } from "@/core/services/jwt/jwt.types";
+import { jwtService } from "@/core/services/jwt/jwt.service";
+import { AppError } from "@/core/utils/app-error";
 
 export interface GraphQLContext {
-  user: string | jwt.JwtPayload | null;
+  user: JwtUserPayload | null;
 }
 
 export const createContext = (headers: IncomingHttpHeaders): GraphQLContext => {
-  const token = (headers.authorization || "").replace("Bearer ", "");
-  let user = null;
+  const token = jwtService.extractToken(headers.authorization);
 
-  if (token) {
-    try {
-      user = jwt.verify(token, env.JWT_SECRET);
-    } catch {
-      user = null;
-    }
+  if (!token) {
+    return { user: null };
   }
 
-  return { user };
+  try {
+    return { user: jwtService.verify(token) };
+  } catch {
+    throw AppError.unauthorized("Invalid or expired token");
+  }
 };

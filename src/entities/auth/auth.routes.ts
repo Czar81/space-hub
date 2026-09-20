@@ -1,11 +1,10 @@
 import { Router } from 'express'
 import { createHash } from 'crypto'
-import jwt from 'jsonwebtoken'
 import { UserRole } from '@prisma/client'
 import prisma from '@/lib/prisma'
+import { jwtService } from '@/core/services/jwt/jwt.service'
 
 const router = Router()
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123'
 
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body
@@ -22,10 +21,7 @@ router.post('/register', async (req, res) => {
       }
     })
 
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      JWT_SECRET
-    )
+    const token = jwtService.sign({ userId: user.id, email: user.email })
 
     res.status(201).json({
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
@@ -48,10 +44,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
 
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      JWT_SECRET
-    )
+    const token = jwtService.sign({ userId: user.id, email: user.email })
 
     res.json({
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
