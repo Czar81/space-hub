@@ -1,43 +1,40 @@
-import express from 'express'
-import cors from 'cors'
-import fs from 'fs'
-import path from 'path'
-import jwt from 'jsonwebtoken'
-import { buildSchema } from 'graphql'
-import { graphqlHTTP } from 'express-graphql'
-import authRoutes from '@/entities/auth/auth.routes'
-import spacesRoutes from '@/entities/spaces/spaces.routes'
-import reservationsRoutes from '@/entities/reservations/reservations.routes'
-import membershipsRoutes from '@/entities/memberships/memberships.routes'
-import { rootValue } from '@/graphql/resolvers'
+import express from "express";
+import cors from "cors";
 
-const typeDefs = fs.readFileSync(path.join(__dirname, 'graphql', 'schema.graphql'), 'utf8')
-const schema = buildSchema(typeDefs)
+import { corsConfig } from "@/core/config/cors.config";
+import { requestLogger } from "@/core/middlewares/request-logger";
+import { errorHandler } from "@/core/middlewares/error.handler";
+import { globalLimiter, authLimiter, graphqlLimiter } from "@/core/middlewares/rate-limiter";
+import { notFoundHandler } from "@/core/middlewares/not-found.handler";
 
-const app = express()
+import authRoutes from "@/entities/auth/auth.routes";
+import spacesRoutes from "@/entities/spaces/spaces.routes";
+import bookingsRoutes from "@/entities/bookings/bookings.routes";
+import membershipsRoutes from "@/entities/memberships/memberships.routes";
+import healthRoutes from "@/core/health.routes";
+import { graphqlHandler } from "@/graphql/graphql.handler";
 
-app.use(cors())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+const app = express();
 
-app.get('/', (req, res) => {
-  res.json({ status: 'ok', message: 'SpaceHub API is running' })
-})
+app.set("trust proxy", 1);
 
-app.use('/api/auth', authRoutes)
-app.use('/api/spaces', spacesRoutes)
-app.use('/api/reservations', reservationsRoutes)
-app.use('/api/memberships', membershipsRoutes)
+app.use(cors(corsConfig));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/graphql', graphqlHTTP((req) => {
-  const token = (req.headers.authorization || '').replace('Bearer ', '')
-  const user = token ? jwt.decode(token) : null
-  return {
-    schema,
-    rootValue,
-    graphiql: { headerEditorEnabled: true },
-    context: { user }
-  }
-}))
+app.use(requestLogger);
+app.use(globalLimiter);
 
-export default app
+app.use("/", healthRoutes);
+
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/spaces", spacesRoutes);
+app.use("/api/bookings", bookingsRoutes);
+app.use("/api/memberships", membershipsRoutes);
+
+app.use("/api/graphql", graphqlLimiter, graphqlHandler);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+export default app;
