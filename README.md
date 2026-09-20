@@ -129,10 +129,10 @@ The server will be available at `http://localhost:3000`.
 
 | Method | Path | Description | Auth required |
 | --- | --- | --- | --- |
-| `POST` | `/api/reservations` | Create a booking | Member |
-| `GET` | `/api/reservations` | List bookings | Member / Admin |
-| `GET` | `/api/reservations/:id` | Get a single booking | Member / Admin |
-| `PATCH` | `/api/reservations/:id/cancel` | Cancel a booking | Member / Admin |
+| `POST` | `/api/bookings` | Create a booking | Member |
+| `GET` | `/api/bookings` | List bookings | Member / Admin |
+| `GET` | `/api/bookings/:id` | Get a single booking | Member / Admin |
+| `PATCH` | `/api/bookings/:id/cancel` | Cancel a booking | Member / Admin |
 
 ### Memberships
 
@@ -175,7 +175,7 @@ The response includes a `token` field:
 **2. Include the token in subsequent requests:**
 
 ```http
-GET /api/reservations
+GET /api/bookings
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ```
@@ -224,10 +224,10 @@ Supports queries for spaces, individual space details with bookings, and occupan
 │   │   │   ├── memberships.controller.ts
 │   │   │   ├── memberships.model.ts
 │   │   │   └── memberships.routes.ts
-│   │   ├── reservations/
-│   │   │   ├── reservations.controller.ts
-│   │   │   ├── reservations.model.ts
-│   │   │   └── reservations.routes.ts
+│   │   ├── bookings/
+│   │   │   ├── bookings.controller.ts
+│   │   │   ├── bookings.model.ts
+│   │   │   └── bookings.routes.ts
 │   │   └── spaces/
 │   │       ├── spaces.controller.ts
 │   │       ├── spaces.model.ts
@@ -235,7 +235,7 @@ Supports queries for spaces, individual space details with bookings, and occupan
 │   ├── graphql/
 │   │   ├── resolvers/
 │   │   │   ├── auth.resolver.ts
-│   │   │   ├── reservations.resolver.ts
+│   │   │   ├── bookings.resolver.ts
 │   │   │   ├── spaces.resolver.ts
 │   │   │   └── index.ts
 │   │   ├── context.ts
