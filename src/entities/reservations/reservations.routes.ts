@@ -1,6 +1,7 @@
 import { Router } from 'express'
-import prisma from '../lib/prisma'
-import { authenticate } from '../middleware/auth.middleware'
+import { BookingStatus } from '@prisma/client'
+import prisma from '@/lib/prisma'
+import { authenticate } from '@/entities/auth/auth.middleware'
 
 const router = Router()
 
@@ -25,7 +26,7 @@ router.post('/', authenticate, async (req, res) => {
         spaceId: parseInt(spaceId),
         startTime: { gte: end },
         endTime: { lte: start },
-        status: { not: 'canceled' }
+        status: { not: BookingStatus.CANCELED }
       }
     })
 
@@ -43,7 +44,7 @@ router.post('/', authenticate, async (req, res) => {
         spaceId: parseInt(spaceId),
         startTime: start,
         endTime: end,
-        status: 'confirmed',
+        status: BookingStatus.CONFIRMED,
         totalPrice
       }
     })
@@ -90,7 +91,7 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
   try {
     const booking = await prisma.booking.update({
       where: { id: parseInt(id) },
-      data: { status: 'canceled' }
+      data: { status: BookingStatus.CANCELED }
     })
     res.json(booking)
   } catch (error: any) {

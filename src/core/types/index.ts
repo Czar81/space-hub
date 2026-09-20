@@ -1,12 +1,14 @@
+import { MembershipPlan, SpaceType, UserRole } from '@prisma/client'
+
 export interface AuthUser {
   userId: number
   email: string
-  role: string
+  role: UserRole
 }
 
 export interface CreateSpaceBody {
   name: string
-  type: string
+  type: SpaceType
   capacity: number
   pricePerHour: number
   isActive?: boolean
@@ -19,6 +21,13 @@ export interface CreateBookingBody {
 }
 
 export interface UpdateMembershipBody {
-  plan: string
+  plan: MembershipPlan
 }
 
+export enum Environments {
+  Development,
+  Production,
+  Test,
+}
+
+// dividir

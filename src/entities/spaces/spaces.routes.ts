@@ -1,6 +1,7 @@
 import { Router } from 'express'
-import prisma from '../lib/prisma'
-import { authenticate } from '../middleware/auth.middleware'
+import { SpaceType } from '@prisma/client'
+import prisma from '@/lib/prisma'
+import { authenticate } from '@/entities/auth/auth.middleware'
 
 const router = Router()
 
@@ -10,7 +11,7 @@ router.get('/', async (req, res) => {
   const filters: any = {}
 
   if (type) {
-    filters.type = type as string
+    filters.type = type as SpaceType
   }
 
   // TODO: filter by minCapacity

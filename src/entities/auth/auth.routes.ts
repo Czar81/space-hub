@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { createHash } from 'crypto'
 import jwt from 'jsonwebtoken'
-import prisma from '../lib/prisma'
+import { UserRole } from '@prisma/client'
+import prisma from '@/lib/prisma'
 
 const router = Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123'
@@ -17,7 +18,7 @@ router.post('/register', async (req, res) => {
         name,
         email,
         password: hashedPassword,
-        role: 'member'
+        role: UserRole.MEMBER
       }
     })
 
