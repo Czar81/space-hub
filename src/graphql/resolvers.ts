@@ -1,4 +1,5 @@
-import prisma from '../lib/prisma'
+import prisma from '@/lib/prisma'
+import { BookingStatus, SpaceType } from '@prisma/client'
 
 function formatDates(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj
@@ -12,7 +13,7 @@ function formatDates(obj: any): any {
 }
 
 export const rootValue = {
-  spaces: async ({ type, minCapacity }: { type?: string; minCapacity?: number }) => {
+  spaces: async ({ type, minCapacity }: { type?: SpaceType; minCapacity?: number }) => {
     return formatDates(
       await prisma.space.findMany({
         where: {
@@ -37,7 +38,9 @@ export const rootValue = {
     const spaces = await prisma.space.findMany()
     const totalSpaces = spaces.length
 
-    const confirmedBookings = await prisma.booking.findMany({ where: { status: 'confirmed' } })
+    const confirmedBookings = await prisma.booking.findMany({
+      where: { status: BookingStatus.CONFIRMED }
+    })
     const occupancyRate = totalSpaces > 0 ? (confirmedBookings.length / totalSpaces) * 100 : 0
     const totalRevenue = confirmedBookings.reduce(
       (sum: number, b: any) => sum + parseFloat(b.totalPrice || '0'), 0
