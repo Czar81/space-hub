@@ -7,12 +7,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+enum SpaceType {
+  HOT_DESK
+  MEETING_ROOM
+  PRIVATE_OFFICE
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELED
+}
+
+enum MembershipPlan {
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
 model User {
   id         Int         @id @default(autoincrement())
   name       String
   email      String      @unique
   password   String
-  role       String      @default("member")
+  role       UserRole    @default(MEMBER)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   bookings   Booking[]
@@ -22,7 +44,7 @@ model User {
 model Space {
   id           Int       @id @default(autoincrement())
   name         String
-  type         String
+  type         SpaceType
   capacity     Int
   pricePerHour Int
   isActive     Boolean   @default(true)
@@ -32,26 +54,26 @@ model Space {
 }
 
 model Booking {
-  id         Int      @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   userId     Int
   spaceId    Int
   startTime  DateTime
   endTime    DateTime
-  status     String   @default("confirmed")
+  status     BookingStatus @default(CONFIRMED)
   totalPrice String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id])
-  space      Space    @relation(fields: [spaceId], references: [id])
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id])
+  space      Space         @relation(fields: [spaceId], references: [id])
 }
 
 model Membership {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  plan      String   @default("basic")
-  startDate DateTime @default(now())
+  id        Int            @id @default(autoincrement())
+  userId    Int            @unique
+  plan      MembershipPlan @default(BASIC)
+  startDate DateTime       @default(now())
   endDate   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id])
 }
