@@ -40,4 +40,6 @@ Thumbs.db
 coverage/
 .nyc_output/
 
-./temp/*
+
+# Local logs
+tmp/
