@@ -1,12 +1,15 @@
 /// <reference types="node" />
 
-import prisma from '../src/lib/prisma';
-import { createHash } from 'node:crypto';
-import { BookingStatus, MembershipPlan, SpaceType, UserRole } from '@prisma/client';
+import prisma from "../src/lib/prisma";
+import bcrypt from "bcryptjs";
+import { BookingStatus, MembershipPlan, SpaceType, UserRole } from "@prisma/client";
 
-
+/**
+ * Resets the database and loads demo data: an admin, two members (password `password123`), their memberships, three spaces and two bookings.
+ * Destructive: every existing row is deleted first, never run it against production data.
+ */
 async function main() {
-  console.log('Starting database seeding...');
+  console.log("Starting database seeding...");
 
   // Clean existing data (in order due to foreign key constraints)
   await prisma.booking.deleteMany();
@@ -14,15 +17,15 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.space.deleteMany();
 
-  console.log('Database cleaned.');
+  console.log("Database cleaned.");
 
   // Create Users (Admin and Members)
-  const passwordHash = createHash('md5').update('password123').digest('hex');
+  const passwordHash = await bcrypt.hash("password123", 10);
 
   const adminUser = await prisma.user.create({
     data: {
-      name: 'Admin SpaceHub',
-      email: 'admin@spacehub.com',
+      name: "Admin SpaceHub",
+      email: "admin@spacehub.com",
       password: passwordHash,
       role: UserRole.ADMIN,
     },
@@ -30,8 +33,8 @@ async function main() {
 
   const memberUser1 = await prisma.user.create({
     data: {
-      name: 'John Doe',
-      email: 'john@example.com',
+      name: "John Doe",
+      email: "john@example.com",
       password: passwordHash,
       role: UserRole.MEMBER,
     },
@@ -39,14 +42,14 @@ async function main() {
 
   const memberUser2 = await prisma.user.create({
     data: {
-      name: 'Jane Smith',
-      email: 'jane@example.com',
+      name: "Jane Smith",
+      email: "jane@example.com",
       password: passwordHash,
       role: UserRole.MEMBER,
     },
   });
 
-  console.log('Users created (Default password: password123).');
+  console.log("Users created (Default password: password123).");
 
   const membershipEndDate = new Date();
   membershipEndDate.setFullYear(membershipEndDate.getFullYear() + 1);
@@ -59,40 +62,43 @@ async function main() {
     ],
   });
 
-  console.log('Memberships created.');
+  console.log("Memberships created.");
 
   // Create Coworking Spaces
   const hotDesk = await prisma.space.create({
     data: {
-      name: 'Hot Desk Zone A',
+      name: "Hot Desk Zone A",
       type: SpaceType.HOT_DESK,
       capacity: 15,
       pricePerHour: 5,
+      location: "San José - Sede Centro",
       isActive: true,
     },
   });
 
   const meetingRoom = await prisma.space.create({
     data: {
-      name: 'Innovation Meeting Room',
+      name: "Innovation Meeting Room",
       type: SpaceType.MEETING_ROOM,
       capacity: 8,
       pricePerHour: 25,
+      location: "San José - Sede Centro",
       isActive: true,
     },
   });
 
-  const privateOffice = await prisma.space.create({
+  await prisma.space.create({
     data: {
-      name: 'Private Office 101',
+      name: "Private Office 101",
       type: SpaceType.PRIVATE_OFFICE,
       capacity: 4,
       pricePerHour: 45,
+      location: "Heredia - Sede Norte",
       isActive: true,
     },
   });
 
-  console.log('Spaces created.');
+  console.log("Spaces created.");
 
   // Create Sample bookings
   const now = new Date();
@@ -111,7 +117,7 @@ async function main() {
       spaceId: meetingRoom.id,
       startTime: tomorrowStart,
       endTime: tomorrowEnd,
-      totalPrice: '50.00',
+      totalPrice: "50.00",
       status: BookingStatus.CONFIRMED,
     },
   });
@@ -130,18 +136,18 @@ async function main() {
       spaceId: hotDesk.id,
       startTime: dayAfterStart,
       endTime: dayAfterEnd,
-      totalPrice: '20.00',
+      totalPrice: "20.00",
       status: BookingStatus.CONFIRMED,
     },
   });
 
-  console.log('Sample bookings created.');
-  console.log('Database seeding completed successfully.');
+  console.log("Sample bookings created.");
+  console.log("Database seeding completed successfully.");
 }
 
 main()
   .catch((e) => {
-    console.error('Error executing seed script:', e);
+    console.error("Error executing seed script:", e);
     throw e;
   })
   .finally(async () => {

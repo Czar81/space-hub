@@ -1,5 +1,7 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from "@prisma/client";
+import { env } from "@/core/config/env.config";
 
-const prisma = new PrismaClient()
+/** Shared Prisma client, connected with the URL composed in the env config. */
+const prisma = new PrismaClient({ datasourceUrl: env.DATABASE_URL });
 
-export default prisma
+export default prisma;

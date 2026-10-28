@@ -7,32 +7,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Access level of a user. ADMIN manages spaces, memberships and every booking; MEMBER only books spaces.
 enum UserRole {
   ADMIN
   MEMBER
 }
 
+/// Kind of bookable space.
 enum SpaceType {
   HOT_DESK
   MEETING_ROOM
   PRIVATE_OFFICE
 }
 
+/// Life cycle of a booking. CANCELED bookings never block a time slot.
 enum BookingStatus {
+  PENDING
   CONFIRMED
   CANCELED
 }
 
+/// Plan contracted by a user.
 enum MembershipPlan {
   BASIC
   PRO
   ENTERPRISE
 }
 
+/// Person using the platform, either a member or an administrator.
 model User {
   id         Int         @id @default(autoincrement())
   name       String
+  /// Unique, stored lower-cased.
   email      String      @unique
+  /// bcrypt hash, never the plain text password.
   password   String
   role       UserRole    @default(MEMBER)
   createdAt  DateTime    @default(now())
@@ -41,37 +49,55 @@ model User {
   membership Membership?
 }
 
+/// Physical space that can be booked.
+/// Deactivating it (isActive = false) hides it from searches but keeps its bookings.
 model Space {
   id           Int       @id @default(autoincrement())
   name         String
   type         SpaceType
   capacity     Int
+  /// Price per hour in whole USD.
   pricePerHour Int
+  /// Branch or site the space belongs to.
+  location     String
+  /// false hides the space from searches (soft delete).
   isActive     Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   bookings     Booking[]
+
+  @@index([isActive, type])
 }
 
+/// Occupation of a space by a user in a time range.
+/// Two non canceled bookings of the same space never overlap (enforced by the service in a transaction).
 model Booking {
   id         Int           @id @default(autoincrement())
   userId     Int
   spaceId    Int
+  /// Start of the booked range.
   startTime  DateTime
+  /// End of the booked range (exclusive: a booking may start when another ends).
   endTime    DateTime
   status     BookingStatus @default(CONFIRMED)
-  totalPrice String
+  /// pricePerHour x duration in hours, calculated by the API.
+  totalPrice Decimal       @db.Decimal(10, 2)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   user       User          @relation(fields: [userId], references: [id])
   space      Space         @relation(fields: [spaceId], references: [id])
+
+  @@index([spaceId, startTime, endTime])
+  @@index([userId])
 }
 
+/// Plan of a user. Every user has exactly one, created at registration.
 model Membership {
   id        Int            @id @default(autoincrement())
   userId    Int            @unique
   plan      MembershipPlan @default(BASIC)
   startDate DateTime       @default(now())
+  /// Expiration date; memberships past it are no longer listed as active.
   endDate   DateTime
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
