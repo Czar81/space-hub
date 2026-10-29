@@ -4,9 +4,10 @@ import { Environments } from "@/core/types/index";
 
 dotenv.config();
 
+/** Zod schema describing every environment variable the API needs. */
 const envSchema = z.object({
   // Runtime
-  NODE_ENV: z.enum(Environments).default(Environments.Development),
+  NODE_ENV: z.string().toLowerCase().pipe(z.enum(Environments)).default(Environments.Development),
   PORT: z.coerce.number().default(3000),
   DEBUG_MODE: z.stringbool().default(false),
 
@@ -26,6 +27,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.url().default("http://localhost:5173"),
 });
 
+/**
+ * Validates `process.env` against the schema and aborts the process with a readable report when it is invalid.
+ */
 const parseEnv = () => {
   const result = envSchema.safeParse(process.env);
 
@@ -40,6 +44,7 @@ const parseEnv = () => {
 
 const parsedEnv = parseEnv();
 
+/** Typed, validated configuration. Also exposes `DATABASE_URL` composed from the `DB_*` variables. */
 export const env = {
   ...parsedEnv,
   DATABASE_URL: `postgresql://${parsedEnv.DB_USER}:${parsedEnv.DB_PASSWORD}@${parsedEnv.DB_HOST}:${parsedEnv.DB_PORT}/${parsedEnv.DB_NAME}`,
