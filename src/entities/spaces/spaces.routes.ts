@@ -1,75 +1,67 @@
-import { Router } from 'express'
-import { SpaceType } from '@prisma/client'
-import prisma from '@/lib/prisma'
-import { authenticate } from '@/entities/auth/auth.middleware'
+import { Router } from "express";
+import { validate } from "@/core/middlewares/validate";
+import { asyncHandler } from "@/core/utils/async-handler";
+import { idParamSchema } from "@/core/schemas/id-param.schema";
+import { authenticate, requireAdmin } from "@/core/middlewares/auth";
+import { spacesService } from "@/entities/spaces/spaces.service";
+import {
+  createSpaceSchema,
+  listSpacesQuerySchema,
+  updateSpaceSchema,
+} from "@/entities/spaces/spaces.schema";
 
-const router = Router()
+const router = Router();
 
-router.get('/', async (req, res) => {
-  const { type, minCapacity } = req.query
+/** GET /api/spaces - public. Active spaces with optional filters. 200 | 400 */
+router.get(
+  "/",
+  validate(listSpacesQuerySchema, "query"),
+  asyncHandler(async (req, res) => {
+    res.json(await spacesService.list(req.query));
+  })
+);
 
-  const filters: any = {}
+/** GET /api/spaces/:id - public. 200 | 400 | 404 */
+router.get(
+  "/:id",
+  validate(idParamSchema, "params"),
+  asyncHandler(async (req, res) => {
+    res.json(await spacesService.getActiveById(Number(req.params.id)));
+  })
+);
 
-  if (type) {
-    filters.type = type as SpaceType
-  }
+/** POST /api/spaces - admin. 201 | 400 | 401 | 403 */
+router.post(
+  "/",
+  authenticate,
+  requireAdmin,
+  validate(createSpaceSchema),
+  asyncHandler(async (req, res) => {
+    res.status(201).json(await spacesService.create(req.body));
+  })
+);
 
-  // TODO: filter by minCapacity
-  // TODO: filter by availability on date
+/** PUT /api/spaces/:id - admin. 200 | 400 | 401 | 403 | 404 */
+router.put(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  validate(idParamSchema, "params"),
+  validate(updateSpaceSchema),
+  asyncHandler(async (req, res) => {
+    res.json(await spacesService.update(Number(req.params.id), req.body));
+  })
+);
 
-  try {
-    const spaces = await prisma.space.findMany({ where: filters })
-    res.json(spaces)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
-})
+/** DELETE /api/spaces/:id - admin. Deactivates the space. 200 | 400 | 401 | 403 | 404 */
+router.delete(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  validate(idParamSchema, "params"),
+  asyncHandler(async (req, res) => {
+    res.json(await spacesService.deactivate(Number(req.params.id)));
+  })
+);
 
-router.get('/:id', async (req, res) => {
-  const { id } = req.params
-
-  try {
-    const space = await prisma.space.findUnique({
-      where: { id: parseInt(id) }
-    })
-
-    if (!space) {
-      return res.status(404).json({ error: 'Space not found' })
-    }
-
-    res.json(space)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-router.post('/', async (req, res) => {
-  const { name, type, capacity, pricePerHour } = req.body
-
-  try {
-    const space = await prisma.space.create({
-      data: { name, type, capacity, pricePerHour, isActive: true }
-    })
-    res.status(201).json(space)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-router.put('/:id', authenticate, async (req, res) => {
-  // TODO: implement space update
-  res.status(501).json({ message: 'Not implemented' })
-})
-
-router.delete('/:id', authenticate, async (req, res) => {
-  const { id } = req.params
-
-  try {
-    await prisma.space.delete({ where: { id: parseInt(id) } })
-    res.json({ message: 'Space deleted' })
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-export default router
+export default router;
