@@ -1,5 +1,4 @@
-import { MembershipPlan } from "@prisma/client";
+import { z } from "zod";
+import { updateMembershipSchema } from "@/entities/memberships/memberships.schema";
 
-export interface UpdateMembershipBody {
-  plan: MembershipPlan;
-}
+export type UpdateMembershipBody = z.infer<typeof updateMembershipSchema>;
