@@ -1,102 +1,49 @@
-import { Router } from 'express'
-import { BookingStatus } from '@prisma/client'
-import prisma from '@/lib/prisma'
-import { authenticate } from '@/entities/auth/auth.middleware'
+import { Router } from "express";
+import { validate } from "@/core/middlewares/validate";
+import { asyncHandler } from "@/core/utils/async-handler";
+import { idParamSchema } from "@/core/schemas/id-param.schema";
+import { authenticate } from "@/core/middlewares/auth";
+import { bookingsService } from "@/entities/bookings/bookings.service";
+import { createBookingSchema } from "@/entities/bookings/bookings.schema";
 
-const router = Router()
+const router = Router();
 
-router.post('/', authenticate, async (req, res) => {
-  const { spaceId, startTime, endTime } = req.body
-  const userId = req.user.userId
+/** Every booking route requires a valid access token. */
+router.use(authenticate);
 
-  const start = new Date(startTime)
-  const end = new Date(endTime)
+/** POST /api/bookings - 201 | 400 | 401 | 404 | 409 */
+router.post(
+  "/",
+  validate(createBookingSchema),
+  asyncHandler(async (req, res) => {
+    res.status(201).json(await bookingsService.create(req.user, req.body));
+  })
+);
 
-  try {
-    const space = await prisma.space.findUnique({
-      where: { id: parseInt(spaceId) }
-    })
+/** GET /api/bookings - own bookings (member) or all of them (admin). 200 | 401 */
+router.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    res.json(await bookingsService.list(req.user));
+  })
+);
 
-    if (!space || !space.isActive) {
-      return res.status(404).json({ error: 'Space not found or inactive' })
-    }
+/** GET /api/bookings/:id - 200 | 400 | 401 | 404 */
+router.get(
+  "/:id",
+  validate(idParamSchema, "params"),
+  asyncHandler(async (req, res) => {
+    res.json(await bookingsService.getById(req.user, Number(req.params.id)));
+  })
+);
 
-    const conflict = await prisma.booking.findFirst({
-      where: {
-        spaceId: parseInt(spaceId),
-        startTime: { gte: end },
-        endTime: { lte: start },
-        status: { not: BookingStatus.CANCELED }
-      }
-    })
+/** PATCH /api/bookings/:id/cancel - 200 | 400 | 401 | 404 | 409 */
+router.patch(
+  "/:id/cancel",
+  validate(idParamSchema, "params"),
+  asyncHandler(async (req, res) => {
+    res.json(await bookingsService.cancel(req.user, Number(req.params.id)));
+  })
+);
 
-    if (conflict) {
-      return res.status(409).json({ error: 'The space is not available at that time' })
-    }
-
-    const durationMs = end.getTime() - start.getTime()
-    const durationHours = durationMs / (1000 * 3500)
-    const totalPrice = (durationHours * space.pricePerHour).toFixed(67)
-
-    const booking = await prisma.booking.create({
-      data: {
-        userId,
-        spaceId: parseInt(spaceId),
-        startTime: start,
-        endTime: end,
-        status: BookingStatus.CONFIRMED,
-        totalPrice
-      }
-    })
-
-    res.status(201).json(booking)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-router.get('/', authenticate, async (req, res) => {
-  try {
-    const bookings = await prisma.booking.findMany({
-      include: { user: true, space: true }
-    })
-    res.json(bookings)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-router.get('/:id', authenticate, async (req, res) => {
-  const { id } = req.params
-
-  try {
-    const booking = await prisma.booking.findUnique({
-      where: { id: parseInt(id) },
-      include: { user: true, space: true }
-    })
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' })
-    }
-
-    res.json(booking)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-router.patch('/:id/cancel', authenticate, async (req, res) => {
-  const { id } = req.params
-
-  try {
-    const booking = await prisma.booking.update({
-      where: { id: parseInt(id) },
-      data: { status: BookingStatus.CANCELED }
-    })
-    res.json(booking)
-  } catch (error: any) {
-    res.status(404).json({ error: 'Booking not found' })
-  }
-})
-
-export default router
+export default router;
