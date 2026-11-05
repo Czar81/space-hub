@@ -2,18 +2,20 @@ type User {
   id: ID!
   name: String!
   email: String!
-  password: String!
   role: String!
 }
 
 type Booking {
   id: ID!
+  userId: Int!
+  spaceId: Int!
   startTime: String!
   endTime: String!
   status: String!
   totalPrice: String!
   createdAt: String!
   user: User
+  space: Space
 }
 
 type Space {
@@ -22,9 +24,25 @@ type Space {
   type: String!
   capacity: Int!
   pricePerHour: Int!
+  location: String!
   isActive: Boolean!
   createdAt: String!
   bookings: [Booking!]
+}
+
+type Membership {
+  id: ID!
+  userId: Int!
+  plan: String!
+  startDate: String!
+  endDate: String!
+  user: User
+}
+
+type AuthPayload {
+  user: User!
+  token: String!
+  refreshToken: String!
 }
 
 type OccupancyAnalytics {
@@ -39,4 +57,16 @@ type Query {
   spaces(type: String, minCapacity: Int): [Space!]!
   space(id: ID!): Space
   occupancyAnalytics: OccupancyAnalytics!
+  bookings: [Booking!]!
+  booking(id: ID!): Booking
+  memberships: [Membership!]!
+}
+
+type Mutation {
+  register(name: String!, email: String!, password: String!): AuthPayload!
+  login(email: String!, password: String!): AuthPayload!
+  refreshToken(refreshToken: String!): AuthPayload!
+  createBooking(spaceId: Int!, startTime: String!, endTime: String!): Booking!
+  cancelBooking(id: ID!): Booking!
+  updateMembership(userId: ID!, plan: String!): Membership!
 }

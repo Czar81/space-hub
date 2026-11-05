@@ -6,9 +6,11 @@ import { rootValue } from "@/graphql";
 import { createContext } from "@/graphql/context";
 import { AppError } from "@/core/utils/app-error";
 
+/** Schema is loaded from `schema.graphql` (copied to `dist/` by the build script). */
 const typeDefs = fs.readFileSync(path.join(__dirname, "schema.graphql"), "utf8");
 const schema = buildSchema(typeDefs);
 
+/** Maps an HTTP status code to the `extensions.code` returned in GraphQL errors. */
 const getGraphqlErrorCode = (statusCode: number) => {
   switch (statusCode) {
     case 400:
@@ -28,6 +30,10 @@ const getGraphqlErrorCode = (statusCode: number) => {
   }
 };
 
+/**
+ * POST/GET /api/graphql - GraphQL endpoint with the GraphiQL playground.
+ * Errors keep the shape of `AppError` (message, code and status in `extensions`).
+ */
 export const graphqlHandler = graphqlHTTP((req) => ({
   schema,
   rootValue,
@@ -37,9 +43,8 @@ export const graphqlHandler = graphqlHTTP((req) => ({
     const originalError = error.originalError;
     const appError = originalError instanceof AppError ? originalError : null;
     const statusCode = appError?.statusCode ?? (originalError ? 500 : 400);
-    const message = appError?.message ?? (statusCode === 500
-      ? "Internal server error"
-      : error.message);
+    const message =
+      appError?.message ?? (statusCode === 500 ? "Internal server error" : error.message);
 
     return {
       message,

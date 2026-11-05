@@ -1,9 +1,17 @@
 import prisma from "@/lib/prisma";
 import { BookingStatus } from "@prisma/client";
 import { AppError } from "@/core/utils/app-error";
+import { GraphQLContext } from "@/graphql/graphql.types";
+import { requireAdminUser } from "@/graphql/guards";
 
+/** Query `occupancyAnalytics`. Admin only. */
 export const analyticsResolvers = {
-  occupancyAnalytics: async () => {
+  /**
+   * Query `occupancyAnalytics`: global figures (spaces, bookings, revenue, expiring memberships). Admin only.
+   */
+  occupancyAnalytics: async (_args: unknown, context: GraphQLContext) => {
+    requireAdminUser(context);
+
     try {
       const spaces = await prisma.space.findMany();
       const totalSpaces = spaces.length;
@@ -12,9 +20,7 @@ export const analyticsResolvers = {
         where: { status: BookingStatus.CONFIRMED },
       });
 
-      const occupancyRate = totalSpaces > 0
-        ? (confirmedBookings.length / totalSpaces) * 100
-        : 0;
+      const occupancyRate = totalSpaces > 0 ? (confirmedBookings.length / totalSpaces) * 100 : 0;
 
       const totalRevenue = confirmedBookings.reduce(
         (sum, b) => sum + parseFloat(b.totalPrice?.toString() || "0"),
