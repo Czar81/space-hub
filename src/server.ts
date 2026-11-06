@@ -1,8 +1,9 @@
-import app from './app'
+import app from "@/app";
+import { env } from "@/core/config/env.config";
 
-const PORT = process.env.PORT || 3000
-
-app.listen(PORT, () => {
-  console.log(`SpaceHub API running on port ${PORT}`)
-  console.log(`GraphQL playground: http://localhost:${PORT}/api/graphql`)
-})
+/** HTTP entry point, starts the server on the configured port. */
+app.listen(env.PORT, () => {
+  console.log(`SpaceHub API running on port ${env.PORT}`);
+  console.log(`API docs: http://localhost:${env.PORT}/api/docs`);
+  console.log(`GraphQL playground: http://localhost:${env.PORT}/api/graphql`);
+});

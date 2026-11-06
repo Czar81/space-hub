@@ -12,8 +12,13 @@ import spacesRoutes from "@/entities/spaces/spaces.routes";
 import bookingsRoutes from "@/entities/bookings/bookings.routes";
 import membershipsRoutes from "@/entities/memberships/memberships.routes";
 import healthRoutes from "@/core/health.routes";
+import docsRoutes from "@/docs/docs.routes";
 import { graphqlHandler } from "@/graphql/graphql.handler";
 
+/**
+ * Express application: global middlewares, REST routes, GraphQL endpoint and error handling.
+ * The order matters: error handlers must stay last.
+ */
 const app = express();
 
 app.set("trust proxy", 1);
@@ -26,6 +31,8 @@ app.use(requestLogger);
 app.use(globalLimiter);
 
 app.use("/", healthRoutes);
+
+app.use("/api", docsRoutes);
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/spaces", spacesRoutes);
