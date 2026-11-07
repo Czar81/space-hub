@@ -12,14 +12,15 @@ REST API for managing coworking spaces, bookings, and memberships. Built with No
 * **Database:** PostgreSQL
 * **ORM:** Prisma
 * **API:** REST + GraphQL
-* **Package Manager:** pnpm
+* **Package Manager:** npm
+* **Docs:** OpenAPI 3 + Swagger UI
+* **API tests:** Bruno
 
 ---
 
 ## Prerequisites
 
 * Node.js v18+
-* pnpm v8+
 * PostgreSQL running locally or via a remote connection
 * A PostgreSQL database created for this project
 
@@ -30,7 +31,7 @@ REST API for managing coworking spaces, bookings, and memberships. Built with No
 ### 1. Install dependencies
 
 ```bash
-pnpm install
+npm install
 
 ```
 
@@ -43,14 +44,7 @@ cp .env.example .env
 
 ```
 
-Open `.env` and update the variables:
-
-```env
-DATABASE_URL="postgresql://<user>:<password>@localhost:5432/<database_name>"
-JWT_SECRET="your_secret_key"
-PORT=3000
-
-```
+Open `.env` and fill in the `DB_*` variables and a long random `JWT_SECRET`. The Prisma CLI reads `DATABASE_URL`, which `.env.example` already composes from the `DB_*` values. Nothing sensitive is committed: `.env` is git-ignored.
 
 `JWT_SECRET` is the private key the server uses to sign tokens on login and verify them on every protected request. It should be a long, random string. You can generate a secure one with:
 
@@ -61,17 +55,17 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 ### 3. Run migrations and seed data
 
-Make sure PostgreSQL is running, then apply the schema and generate the Prisma client:
+Make sure PostgreSQL is running, then apply the migrations:
 
 ```bash
-pnpm prisma migrate dev --name init
+npm run db:migrate
 
 ```
 
-To populate the database with initial seed data:
+To populate the database with demo data (admin `admin@spacehub.com`, members `john@example.com` / `jane@example.com`, all with password `password123`):
 
 ```bash
-pnpm prisma db seed
+npm run db:seed
 
 ```
 
@@ -82,16 +76,16 @@ pnpm prisma db seed
 > ```
 > 
 > 
-> Then run `pnpm prisma migrate dev --name init`.
+> Then run `npm run db:migrate`.
 
 ### 4. Start the development server
 
 ```bash
-pnpm run dev
+npm run dev
 
 ```
 
-The server will be available at `http://localhost:3000`.
+The server will be available at `http://localhost:3000`, with the interactive OpenAPI documentation at `http://localhost:3000/api/docs` (raw JSON at `/api/docs.json`).
 
 ---
 
@@ -99,10 +93,12 @@ The server will be available at `http://localhost:3000`.
 
 | Script | Description |
 | --- | --- |
-| `pnpm run dev` | Start server in development mode with hot reload |
-| `pnpm run build` | Compile TypeScript to JavaScript |
-| `pnpm start` | Start compiled production server |
-| `pnpm prisma db seed` | Seed database with initial data |
+| `npm run dev` | Start server in development mode with hot reload |
+| `npm run build` | Compile TypeScript to `dist/` |
+| `npm run db:migrate` | Apply pending Prisma migrations |
+| `npm run test:api` | Run the Bruno suite against a running server |
+| `npm start` | Start compiled production server |
+| `npx prisma db seed` | Seed database with initial data |
 
 ---
 
@@ -113,13 +109,14 @@ The server will be available at `http://localhost:3000`.
 | Method | Path | Description | Auth required |
 | --- | --- | --- | --- |
 | `POST` | `/api/auth/register` | Register a new user | No |
-| `POST` | `/api/auth/login` | Log in and receive a JWT token | No |
+| `POST` | `/api/auth/login` | Log in and receive an access token and a refresh token | No |
+| `POST` | `/api/auth/refresh` | Exchange a refresh token for a new token pair | No |
 
 ### Spaces
 
 | Method | Path | Description | Auth required |
 | --- | --- | --- | --- |
-| `GET` | `/api/spaces` | List active spaces (supports filters) | No |
+| `GET` | `/api/spaces` | List active spaces. Filters: `type`, `minCapacity`, `date` (YYYY-MM-DD) | No |
 | `GET` | `/api/spaces/:id` | Get a single space by ID | No |
 | `POST` | `/api/spaces` | Create a new space | Admin |
 | `PUT` | `/api/spaces/:id` | Update a space | Admin |
@@ -162,11 +159,11 @@ Content-Type: application/json
 
 ```
 
-The response includes a `token` field:
+The response includes a `token` (short lived) and `refreshToken` fields. Use `POST /api/auth/refresh` with `{ "refreshToken": "..." }` to get a new pair without logging in again:
 
 ```json
 {
-  "user": { "id": 1, "name": "Jane Doe", "email": "user@example.com", "role": "member" },
+  "user": { "id": 1, "name": "Jane Doe", "email": "user@example.com", "role": "MEMBER" },
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 
@@ -180,15 +177,44 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ```
 
-The token must be sent in the `Authorization` header using the `Bearer` scheme. Requests to protected endpoints without a valid token will receive a `401 Unauthorized` response.
+The token must be sent in the `Authorization` header using the `Bearer` scheme. Requests to protected endpoints without a valid token will receive a `401 Unauthorized` response, and admin-only endpoints answer `403 Forbidden` to members. Every error is JSON: `{ "status": "error", "message": "..." }`.
 
 ---
 
 ## GraphQL
 
-A GraphQL endpoint is available at `/api/graphql` with an interactive GraphiQL playground.
+A GraphQL endpoint is available at `/api/graphql` with an interactive GraphiQL playground. It reuses the same services as the REST API, so the rules are identical.
 
-Supports queries for spaces, individual space details with bookings, and occupancy analytics. Reads the `Authorization: Bearer <token>` header to provide authentication context to resolvers.
+| Operation | Access |
+| --- | --- |
+| `spaces`, `space` | Public (bookings are only returned to admins) |
+| `register`, `login`, `refreshToken` | Public |
+| `bookings`, `booking`, `createBooking`, `cancelBooking` | Authenticated (members only see their own) |
+| `memberships`, `updateMembership`, `occupancyAnalytics` | Admin |
+
+Send the `Authorization: Bearer <token>` header. Errors carry `extensions.code` (`UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `BAD_REQUEST`). Note that `express-graphql` answers HTTP 500 when an error nulls the whole `data`, so check `errors` in the body.
+
+---
+
+## API tests (Bruno)
+
+The collection lives in `bruno/` and covers every endpoint with success and error cases. With the server running (and the database seeded):
+
+```bash
+NODE_ENV=Test npm run dev   # terminal 1: Test mode disables rate limiting
+npm run test:api            # terminal 2
+```
+
+The target URL is `baseUrl` in `bruno/environments/local.bru` (default `http://localhost:3000`). Each run creates its own users and spaces, so it can be repeated.
+
+---
+
+## Code Conventions
+
+* **Layers:** `routes` only wire middlewares and call a `service`; services hold the business rules and throw `AppError`; `schema` files hold the Zod validation and `types` files hold the TypeScript types derived from them. REST and GraphQL reuse the same services, so the rules are written once.
+* **Errors:** always JSON, `{ "status": "error", "message": "..." }`, produced by the central error handler.
+* **Documentation:** everything is documented in English with JSDoc (`@param`, `@returns`, `@throws`); Prisma models and fields use `///` comments. When an endpoint changes, update its route comment and `src/docs/openapi.ts`.
+* **Lint and format:** `npm run lint`, `npm run format`.
 
 ---
 
@@ -196,56 +222,15 @@ Supports queries for spaces, individual space details with bookings, and occupan
 
 ```text
 .
-├── prisma/
-│   ├── migrations/
-│   ├── schema.prisma
-│   └── seed.ts
+├── bruno/                      # Bruno collection
+├── prisma/                     # schema, migrations, seed
 ├── src/
-│   ├── core/
-│   │   ├── config/
-│   │   │   └── env.config.ts
-│   │   ├── middlewares/
-│   │   │   ├── auth.middleware.ts
-│   │   │   ├── error.handler.ts
-│   │   │   └── rate-limiter.ts
-│   │   ├── services/
-│   │   ├── types/
-│   │   │   ├── express.d.ts
-│   │   │   └── index.ts
-│   │   └── utils/
-│   │       ├── app-error.ts
-│   │       └── logger.ts
-│   ├── entities/
-│   │   ├── auth/
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── auth.model.ts
-│   │   │   └── auth.routes.ts
-│   │   ├── memberships/
-│   │   │   ├── memberships.controller.ts
-│   │   │   ├── memberships.model.ts
-│   │   │   └── memberships.routes.ts
-│   │   ├── bookings/
-│   │   │   ├── bookings.controller.ts
-│   │   │   ├── bookings.model.ts
-│   │   │   └── bookings.routes.ts
-│   │   └── spaces/
-│   │       ├── spaces.controller.ts
-│   │       ├── spaces.model.ts
-│   │       └── spaces.routes.ts
-│   ├── graphql/
-│   │   ├── resolvers/
-│   │   │   ├── auth.resolver.ts
-│   │   │   ├── bookings.resolver.ts
-│   │   │   ├── spaces.resolver.ts
-│   │   │   └── index.ts
-│   │   ├── context.ts
-│   │   └── schema.graphql
-│   ├── lib/
-│   │   └── prisma.ts
-│   ├── tests/
-│   └── index.ts
-├── package-lock.yaml
-├── package.json
-└── tsconfig.json
-
+│   ├── core/                   # config, middlewares, jwt service, utils, shared schemas
+│   ├── docs/                   # OpenAPI spec + Swagger UI route
+│   ├── entities/<name>/        # <name>.routes / .service / .schema (zod) / .types
+│   ├── graphql/                # GraphQL schema, context and resolvers
+│   ├── lib/prisma.ts
+│   ├── app.ts
+│   └── server.ts
+└── package.json
 ```

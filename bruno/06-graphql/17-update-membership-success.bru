@@ -1,0 +1,31 @@
+meta {
+  name: Update membership success
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "query": "mutation { updateMembership(userId: \"{{memberId}}\", plan: \"ENTERPRISE\") { plan } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("plan changes", function () {
+    expect(res.body.data.updateMembership.plan).to.equal("ENTERPRISE");
+  });
+}

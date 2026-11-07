@@ -1,0 +1,32 @@
+meta {
+  name: Update membership success
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/memberships/{{memberId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "plan": "PRO"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("plan is updated", function () {
+    expect(res.body.plan).to.equal("PRO");
+    expect(res.body.userId).to.equal(bru.getVar("memberId"));
+  });
+}

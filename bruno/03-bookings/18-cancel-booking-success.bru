@@ -1,0 +1,25 @@
+meta {
+  name: Cancel booking success
+  type: http
+  seq: 18
+}
+
+patch {
+  url: {{baseUrl}}/api/bookings/{{bookingId}}/cancel
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("booking is canceled", function () {
+    expect(res.body.status).to.equal("CANCELED");
+  });
+}

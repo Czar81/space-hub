@@ -1,0 +1,21 @@
+meta {
+  name: List spaces available on date
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/spaces?date=2099-01-01
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("space without bookings that day is listed", function () {
+    expect(res.body.some((s) => s.id === bru.getVar("spaceId"))).to.equal(true);
+  });
+}

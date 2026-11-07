@@ -1,0 +1,42 @@
+meta {
+  name: Create booking success
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/bookings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+body:json {
+  {
+    "spaceId": {{spaceId}},
+    "startTime": "2090-03-10T10:00:00Z",
+    "endTime": "2090-03-10T12:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("bookingId", res.body.id);
+}
+
+tests {
+  test("price is hours x pricePerHour", function () {
+    expect(res.body.status).to.equal("CONFIRMED");
+    expect(res.body.userId).to.equal(bru.getVar("memberId"));
+    expect(Number(res.body.totalPrice)).to.equal(40);
+  });
+  test("response never leaks password", function () {
+    expect(JSON.stringify(res.body)).to.not.contain("password");
+  });
+}

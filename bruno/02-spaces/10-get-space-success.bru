@@ -1,0 +1,21 @@
+meta {
+  name: Get space success
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/spaces/{{spaceId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("returns the space", function () {
+    expect(res.body.id).to.equal(bru.getVar("spaceId"));
+  });
+}

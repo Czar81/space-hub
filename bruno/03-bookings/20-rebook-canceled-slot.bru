@@ -1,0 +1,33 @@
+meta {
+  name: Rebook canceled slot
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/bookings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{otherToken}}
+}
+
+body:json {
+  {
+    "spaceId": {{spaceId}},
+    "startTime": "2090-03-10T10:00:00Z",
+    "endTime": "2090-03-10T12:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("canceled bookings free the slot", function () {
+    expect(res.body.status).to.equal("CONFIRMED");
+  });
+}

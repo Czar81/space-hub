@@ -1,0 +1,25 @@
+meta {
+  name: Get booking success
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/bookings/{{bookingId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("returns own booking", function () {
+    expect(res.body.id).to.equal(bru.getVar("bookingId"));
+  });
+}

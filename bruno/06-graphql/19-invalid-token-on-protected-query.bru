@@ -1,0 +1,31 @@
+meta {
+  name: Invalid token on protected query
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: not.a.valid.jwt
+}
+
+body:json {
+  {
+    "query": "{ bookings { id } }"
+  }
+}
+
+assert {
+  res.status: in 200,500
+}
+
+tests {
+  test("is unauthorized with a code", function () {
+    expect(res.body.errors[0].extensions.code).to.equal("UNAUTHORIZED");
+  });
+}

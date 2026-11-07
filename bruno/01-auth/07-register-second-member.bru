@@ -1,0 +1,33 @@
+meta {
+  name: Register second member
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Bruno Other",
+    "email": "{{otherEmail}}",
+    "password": "password123"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  bru.setVar("otherEmail", `other.${Date.now()}@example.com`);
+}
+
+script:post-response {
+  bru.setVar("otherToken", res.body.token);
+  bru.setVar("otherId", res.body.user.id);
+}
+

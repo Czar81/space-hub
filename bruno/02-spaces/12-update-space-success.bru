@@ -1,0 +1,31 @@
+meta {
+  name: Update space success
+  type: http
+  seq: 12
+}
+
+put {
+  url: {{baseUrl}}/api/spaces/{{spaceId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "capacity": 8
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("capacity is updated", function () {
+    expect(res.body.capacity).to.equal(8);
+  });
+}

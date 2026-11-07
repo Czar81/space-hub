@@ -1,0 +1,31 @@
+meta {
+  name: Analytics as admin
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "query": "{ occupancyAnalytics { totalSpaces } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("returns analytics", function () {
+    expect(res.body.data.occupancyAnalytics.totalSpaces).to.be.a("number");
+  });
+}

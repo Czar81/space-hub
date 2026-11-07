@@ -1,0 +1,34 @@
+meta {
+  name: Create temporary space
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/spaces
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "name": "Temp Desk {{runId}}",
+    "type": "HOT_DESK",
+    "capacity": 2,
+    "pricePerHour": 7,
+    "location": "Bruno Tower"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("tempSpaceId", res.body.id);
+}
+

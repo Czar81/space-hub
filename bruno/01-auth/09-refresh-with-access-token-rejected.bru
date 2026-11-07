@@ -1,0 +1,29 @@
+meta {
+  name: Refresh with access token rejected
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refreshToken": "{{adminToken}}"
+  }
+}
+
+assert {
+  res.status: eq 401
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Cancel any booking as admin
+  type: http
+  seq: 21
+}
+
+patch {
+  url: {{baseUrl}}/api/bookings/{{otherBookingId}}/cancel
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("admin cancels bookings of other users", function () {
+    expect(res.body.status).to.equal("CANCELED");
+  });
+}

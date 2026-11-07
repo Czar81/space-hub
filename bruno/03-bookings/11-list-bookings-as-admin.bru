@@ -1,0 +1,27 @@
+meta {
+  name: List bookings as admin
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/bookings
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("admin sees bookings from several users", function () {
+    const owners = new Set(res.body.map((b) => b.userId));
+    expect(owners.has(bru.getVar("memberId"))).to.equal(true);
+    expect(owners.has(bru.getVar("otherId"))).to.equal(true);
+  });
+}

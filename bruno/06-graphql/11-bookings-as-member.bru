@@ -1,0 +1,33 @@
+meta {
+  name: Bookings as member
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+body:json {
+  {
+    "query": "{ bookings { id userId user { name role } } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("only own bookings", function () {
+    const list = res.body.data.bookings;
+    expect(list.length).to.be.greaterThan(0);
+    expect(list.every((b) => b.userId === bru.getVar("memberId"))).to.equal(true);
+  });
+}

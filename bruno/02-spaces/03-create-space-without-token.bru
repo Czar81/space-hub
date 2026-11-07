@@ -1,0 +1,33 @@
+meta {
+  name: Create space without token
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/spaces
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Bruno Room {{runId}}",
+    "type": "MEETING_ROOM",
+    "capacity": 6,
+    "pricePerHour": 20,
+    "location": "Bruno Tower"
+  }
+}
+
+assert {
+  res.status: eq 401
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

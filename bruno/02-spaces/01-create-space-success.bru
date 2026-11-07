@@ -1,0 +1,45 @@
+meta {
+  name: Create space success
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/spaces
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "name": "Bruno Room {{runId}}",
+    "type": "MEETING_ROOM",
+    "capacity": 6,
+    "pricePerHour": 20,
+    "location": "Bruno Tower"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  bru.setVar("runId", Date.now());
+}
+
+script:post-response {
+  bru.setVar("spaceId", res.body.id);
+}
+
+tests {
+  test("space is created active", function () {
+    expect(res.body.isActive).to.equal(true);
+    expect(res.body.pricePerHour).to.equal(20);
+    expect(res.body.location).to.equal("Bruno Tower");
+  });
+}

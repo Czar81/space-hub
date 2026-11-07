@@ -1,0 +1,27 @@
+meta {
+  name: List memberships as admin
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/memberships
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("lists active memberships with user info", function () {
+    expect(res.body).to.be.an("array");
+    expect(res.body.some((m) => m.userId === bru.getVar("memberId"))).to.equal(true);
+    expect(JSON.stringify(res.body)).to.not.contain("password");
+  });
+}

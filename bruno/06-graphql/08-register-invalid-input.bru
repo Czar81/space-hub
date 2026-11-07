@@ -1,0 +1,27 @@
+meta {
+  name: Register invalid input
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "mutation { register(name: \"\", email: \"x\", password: \"1\") { token } }"
+  }
+}
+
+assert {
+  res.status: in 200,500
+}
+
+tests {
+  test("is a bad request", function () {
+    expect(res.body.errors[0].extensions.code).to.equal("BAD_REQUEST");
+  });
+}
