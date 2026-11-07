@@ -96,6 +96,8 @@ The server will be available at `http://localhost:3000`, with the interactive Op
 | `npm run dev` | Start server in development mode with hot reload |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm run db:migrate` | Apply pending Prisma migrations |
+| `npm test` | Run the unit tests (Vitest, no database needed) |
+| `npm run test:coverage` | Unit tests with coverage report |
 | `npm run test:api` | Run the Bruno suite against a running server |
 | `npm start` | Start compiled production server |
 | `npx prisma db seed` | Seed database with initial data |
@@ -196,6 +198,20 @@ Send the `Authorization: Bearer <token>` header. Errors carry `extensions.code` 
 
 ---
 
+## Unit tests (Vitest)
+
+`tests/` mirrors `src/`: `tests/core/...`, `tests/entities/<name>/<name>.service.test.ts`, `tests/graphql/...`. Each module is tested in isolation: Prisma and the logger are mocked globally (`tests/helpers/setup.ts`), and tests that depend on another service mock it with `vi.mock`. No database or running server is required.
+
+```bash
+npm test                # run once
+npm run test:watch      # watch mode
+npm run test:coverage   # coverage report
+```
+
+New module `src/entities/foo/foo.service.ts` -> `tests/entities/foo/foo.service.test.ts`. Shared builders live in `tests/helpers/factories.ts`.
+
+---
+
 ## API tests (Bruno)
 
 The collection lives in `bruno/` and covers every endpoint with success and error cases. With the server running (and the database seeded):
@@ -224,6 +240,7 @@ The target URL is `baseUrl` in `bruno/environments/local.bru` (default `http://l
 .
 ├── bruno/                      # Bruno collection
 ├── prisma/                     # schema, migrations, seed
+├── tests/                      # unit tests, same layout as src/
 ├── src/
 │   ├── core/                   # config, middlewares, jwt service, utils, shared schemas
 │   ├── docs/                   # OpenAPI spec + Swagger UI route

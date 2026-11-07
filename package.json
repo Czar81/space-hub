@@ -10,9 +10,12 @@
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "test:api": "cd bruno && bru run --env local",
-    "lint": "eslint src prisma",
-    "format": "prettier --write src prisma",
-    "format:check": "prettier --check src prisma"
+    "lint": "eslint src tests prisma",
+    "format": "prettier --write src tests prisma",
+    "format:check": "prettier --check src tests prisma",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -42,6 +45,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@types/ws": "^8.5.13",
     "@usebruno/cli": "^4.3.0",
+    "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "nodemon": "^3.1.9",
@@ -52,7 +56,8 @@
     "tsc-alias": "^1.9.9",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.72.1"
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^4.1.12"
   },
   "prisma": {
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
