@@ -13,11 +13,14 @@ enum UserRole {
   MEMBER
 }
 
-/// Kind of bookable space.
+/// Kind of bookable space, one to one with the client's catalog.
 enum SpaceType {
-  HOT_DESK
-  MEETING_ROOM
-  PRIVATE_OFFICE
+  /// Escritorio individual: a desk for one person.
+  INDIVIDUAL_DESK
+  /// Sala privada: a closed room for a team or meetings.
+  PRIVATE_ROOM
+  /// Suite empresarial: a full private suite for a company.
+  ENTERPRISE_SUITE
 }
 
 /// Life cycle of a booking. CANCELED bookings never block a time slot.

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/spaces?type=MEETING_ROOM&minCapacity=6
+  url: {{baseUrl}}/api/spaces?type=PRIVATE_ROOM&minCapacity=6
   body: none
   auth: none
 }
@@ -17,6 +17,6 @@ assert {
 tests {
   test("every result matches the filters", function () {
     expect(res.body.length).to.be.greaterThan(0);
-    expect(res.body.every((s) => s.type === "MEETING_ROOM" && s.capacity >= 6)).to.equal(true);
+    expect(res.body.every((s) => s.type === "PRIVATE_ROOM" && s.capacity >= 6)).to.equal(true);
   });
 }

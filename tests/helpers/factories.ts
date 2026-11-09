@@ -15,7 +15,7 @@ export const makeUser = (overrides = {}) => ({
 export const makeSpace = (overrides = {}) => ({
   id: 1,
   name: "Sala A",
-  type: SpaceType.MEETING_ROOM,
+  type: SpaceType.PRIVATE_ROOM,
   capacity: 8,
   pricePerHour: 45,
   location: "Piso 2",

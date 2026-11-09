@@ -7,7 +7,7 @@ import {
 
 const valid = {
   name: " Sala ",
-  type: "MEETING_ROOM",
+  type: "PRIVATE_ROOM",
   capacity: 8,
   pricePerHour: 45,
   location: "P2",

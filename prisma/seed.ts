@@ -65,10 +65,10 @@ async function main() {
   console.log("Memberships created.");
 
   // Create Coworking Spaces
-  const hotDesk = await prisma.space.create({
+  const individualDesk = await prisma.space.create({
     data: {
-      name: "Hot Desk Zone A",
-      type: SpaceType.HOT_DESK,
+      name: "Individual Desk Zone A",
+      type: SpaceType.INDIVIDUAL_DESK,
       capacity: 15,
       pricePerHour: 5,
       location: "San José - Sede Centro",
@@ -76,10 +76,10 @@ async function main() {
     },
   });
 
-  const meetingRoom = await prisma.space.create({
+  const privateRoom = await prisma.space.create({
     data: {
-      name: "Innovation Meeting Room",
-      type: SpaceType.MEETING_ROOM,
+      name: "Innovation Private Room",
+      type: SpaceType.PRIVATE_ROOM,
       capacity: 8,
       pricePerHour: 25,
       location: "San José - Sede Centro",
@@ -89,8 +89,8 @@ async function main() {
 
   await prisma.space.create({
     data: {
-      name: "Private Office 101",
-      type: SpaceType.PRIVATE_OFFICE,
+      name: "Enterprise Suite 101",
+      type: SpaceType.ENTERPRISE_SUITE,
       capacity: 4,
       pricePerHour: 45,
       location: "Heredia - Sede Norte",
@@ -103,7 +103,7 @@ async function main() {
   // Create Sample bookings
   const now = new Date();
 
-  // booking 1: Tomorrow in the meeting room
+  // booking 1: Tomorrow in the private room
   const tomorrowStart = new Date(now);
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
   tomorrowStart.setHours(10, 0, 0, 0);
@@ -114,7 +114,7 @@ async function main() {
   await prisma.booking.create({
     data: {
       userId: memberUser1.id,
-      spaceId: meetingRoom.id,
+      spaceId: privateRoom.id,
       startTime: tomorrowStart,
       endTime: tomorrowEnd,
       totalPrice: "50.00",
@@ -122,7 +122,7 @@ async function main() {
     },
   });
 
-  // booking 2: Day after tomorrow at Hot Desk
+  // booking 2: Day after tomorrow at the individual desk
   const dayAfterStart = new Date(now);
   dayAfterStart.setDate(dayAfterStart.getDate() + 2);
   dayAfterStart.setHours(14, 0, 0, 0);
@@ -133,7 +133,7 @@ async function main() {
   await prisma.booking.create({
     data: {
       userId: memberUser2.id,
-      spaceId: hotDesk.id,
+      spaceId: individualDesk.id,
       startTime: dayAfterStart,
       endTime: dayAfterEnd,
       totalPrice: "20.00",
