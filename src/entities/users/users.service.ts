@@ -6,6 +6,12 @@ import { CreateUserData } from "@/entities/users/users.types";
 
 /** bcrypt cost factor. */
 const SALT_ROUNDS = 10;
+/**
+ * Hash compared when the email does not exist, so an unknown email costs the same bcrypt work
+ * as a wrong password and response times do not reveal which emails are registered.
+ * Same cost factor as real hashes; computed once at startup.
+ */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("spacehub-timing-equalizer", SALT_ROUNDS);
 /** Duration of the BASIC membership every new user receives. */
 const DEFAULT_MEMBERSHIP_MONTHS = 12;
 
@@ -74,12 +80,15 @@ export const usersService = {
 
   /**
    * Compares a plain password with its bcrypt hash.
+   * Without a hash (unknown user) it still runs a full `bcrypt.compare` against a dummy hash and
+   * returns `false`, so both failure cases take the same time.
    *
    * @param plainPassword Password typed by the user.
-   * @param hashedPassword Hash stored in the database.
+   * @param hashedPassword Hash stored in the database, or `null`/`undefined` when the user does not exist.
    * @returns `true` when they match.
    */
-  async verifyPassword(plainPassword: string, hashedPassword: string) {
-    return bcrypt.compare(plainPassword, hashedPassword);
+  async verifyPassword(plainPassword: string, hashedPassword?: string | null) {
+    const matches = await bcrypt.compare(plainPassword, hashedPassword ?? DUMMY_PASSWORD_HASH);
+    return Boolean(hashedPassword) && matches;
   },
 };

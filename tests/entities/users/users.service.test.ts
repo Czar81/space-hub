@@ -59,4 +59,12 @@ describe("usersService", () => {
     expect(await usersService.verifyPassword("secret123", hash)).toBe(true);
     expect(await usersService.verifyPassword("wrong", hash)).toBe(false);
   });
+
+  it("verifyPassword without a hash still runs bcrypt and returns false", async () => {
+    const compare = vi.spyOn(bcrypt, "compare");
+    expect(await usersService.verifyPassword("secret123", null)).toBe(false);
+    expect(await usersService.verifyPassword("spacehub-timing-equalizer", undefined)).toBe(false);
+    expect(compare).toHaveBeenCalledTimes(2);
+    compare.mockRestore();
+  });
 });

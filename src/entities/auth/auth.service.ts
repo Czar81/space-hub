@@ -35,7 +35,9 @@ export const authService = {
   },
 
   /**
-   * Checks the credentials. An unknown email and a wrong password share the same 401 message to avoid user enumeration.
+   * Checks the credentials. An unknown email and a wrong password share the same 401 message and,
+   * because bcrypt always runs (against a dummy hash when the user is missing), the same response time,
+   * so neither the message nor the timing reveals which emails are registered.
    *
    * @param credentials Validated login body.
    * @returns The user and a token pair.
@@ -43,7 +45,8 @@ export const authService = {
    */
   async login({ email, password }: LoginBody) {
     const user = await usersService.findByEmail(email);
-    const isValid = user ? await usersService.verifyPassword(password, user.password) : false;
+    // Always compare: skipping bcrypt for unknown emails would make that response measurably faster
+    const isValid = await usersService.verifyPassword(password, user?.password);
 
     if (!user || !isValid) {
       throw AppError.unauthorized("Invalid credentials");

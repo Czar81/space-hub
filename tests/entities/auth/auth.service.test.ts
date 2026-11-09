@@ -49,6 +49,13 @@ describe("authService", () => {
       expect(wrong.statusCode).toBe(401);
       expect(unknown.message).toBe(wrong.message);
     });
+
+    it("runs bcrypt even when the email does not exist (same response time)", async () => {
+      users.findByEmail.mockResolvedValue(null);
+      users.verifyPassword.mockResolvedValue(false);
+      await authService.login({ email: "x@test.com", password: "p" }).catch(() => {});
+      expect(users.verifyPassword).toHaveBeenCalledWith("p", undefined);
+    });
   });
 
   describe("refresh", () => {
