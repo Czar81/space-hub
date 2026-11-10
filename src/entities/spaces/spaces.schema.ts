@@ -19,9 +19,32 @@ export const updateSpaceSchema = createSpaceSchema
     message: "At least one field is required",
   });
 
-/** Query string of `GET /api/spaces`: `type`, `minCapacity` and `date` (YYYY-MM-DD). */
-export const listSpacesQuerySchema = z.object({
-  type: z.enum(SpaceType).optional(),
-  minCapacity: z.coerce.number().int().positive().max(MAX_DB_INT).optional(),
-  date: z.iso.date().optional(),
-});
+/**
+ * Query string of `GET /api/spaces` (also the arguments of the GraphQL `spaces` query).
+ * - `type`, `minCapacity`: catalog filters.
+ * - `date` (YYYY-MM-DD): spaces free during the whole UTC day.
+ * - `startTime` + `endTime` (ISO 8601, sent together): spaces free during that exact range,
+ *   which is what a client needs to book a few hours of a day that already has other bookings.
+ */
+export const listSpacesQuerySchema = z
+  .object({
+    type: z.enum(SpaceType).optional(),
+    minCapacity: z.coerce.number().int().positive().max(MAX_DB_INT).optional(),
+    date: z.iso.date().optional(),
+    startTime: z.iso
+      .datetime({ offset: true })
+      .transform((value) => new Date(value))
+      .optional(),
+    endTime: z.iso
+      .datetime({ offset: true })
+      .transform((value) => new Date(value))
+      .optional(),
+  })
+  .refine((data) => (data.startTime === undefined) === (data.endTime === undefined), {
+    message: "startTime and endTime must be sent together",
+    path: ["endTime"],
+  })
+  .refine((data) => !data.startTime || !data.endTime || data.endTime > data.startTime, {
+    message: "endTime must be after startTime",
+    path: ["endTime"],
+  });

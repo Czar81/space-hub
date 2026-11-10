@@ -24,7 +24,7 @@ export const openApiSpec = {
     title: "SpaceHub API",
     version: "2.1.0",
     description:
-      "REST API to manage coworking spaces, bookings and memberships. A GraphQL endpoint with the same features is available at `/api/graphql`. Protected endpoints require a JWT in the `Authorization: Bearer <token>` header.",
+      "REST API to manage coworking spaces, bookings and memberships. A GraphQL endpoint with the same features is available at `/api/graphql` (HTTP), plus real-time availability subscriptions over WebSocket on the same path (graphql-ws protocol). Protected endpoints require a JWT in the `Authorization: Bearer <token>` header.",
   },
   servers: [{ url: "/", description: "Current server" }],
   tags: [
@@ -98,15 +98,32 @@ export const openApiSpec = {
         tags: ["Spaces"],
         summary: "List active spaces",
         description:
-          "Public. Inactive spaces never appear. `date` excludes spaces with an active booking that overlaps that (UTC) day.",
+          "Public. Inactive spaces never appear. Two availability filters, combinable:\n\n" +
+          "- `date` keeps only spaces that are **free during the whole UTC day**: a space with any active booking that day (even a one hour one) is left out.\n" +
+          "- `startTime` + `endTime` keep only spaces with no active booking overlapping that exact range. Use it to find a space for a few hours of a day that already has other bookings.\n\n" +
+          "Canceled bookings never block a space.",
         parameters: [
           { name: "type", in: "query", schema: ref("SpaceType") },
           { name: "minCapacity", in: "query", schema: { type: "integer", minimum: 1 } },
           {
             name: "date",
             in: "query",
-            description: "Availability day (YYYY-MM-DD)",
+            description:
+              "YYYY-MM-DD. Only spaces with no active booking at any time of that UTC day (free all day).",
             schema: { type: "string", format: "date" },
+          },
+          {
+            name: "startTime",
+            in: "query",
+            description:
+              "ISO 8601 date-time with offset. Start of the range the space must be free; requires `endTime`.",
+            schema: { type: "string", format: "date-time" },
+          },
+          {
+            name: "endTime",
+            in: "query",
+            description: "ISO 8601 date-time with offset, after `startTime`; requires `startTime`.",
+            schema: { type: "string", format: "date-time" },
           },
         ],
         responses: {
@@ -277,7 +294,12 @@ export const openApiSpec = {
         },
       },
       UserRole: { type: "string", enum: ["ADMIN", "MEMBER"] },
-      SpaceType: { type: "string", enum: ["HOT_DESK", "MEETING_ROOM", "PRIVATE_OFFICE"] },
+      SpaceType: {
+        type: "string",
+        enum: ["INDIVIDUAL_DESK", "PRIVATE_ROOM", "ENTERPRISE_SUITE"],
+        description:
+          "INDIVIDUAL_DESK = escritorio individual, PRIVATE_ROOM = sala privada, ENTERPRISE_SUITE = suite empresarial.",
+      },
       BookingStatus: { type: "string", enum: ["PENDING", "CONFIRMED", "CANCELED"] },
       MembershipPlan: { type: "string", enum: ["BASIC", "PRO", "ENTERPRISE"] },
       User: {

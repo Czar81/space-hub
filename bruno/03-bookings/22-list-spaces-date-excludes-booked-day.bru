@@ -1,0 +1,21 @@
+meta {
+  name: List spaces date excludes booked day
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{baseUrl}}/api/spaces?date=2090-03-10
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("date means free all day: a space with a 2h booking that day is left out", function () {
+    expect(res.body.some((s) => s.id === bru.getVar("spaceId"))).to.equal(false);
+  });
+}

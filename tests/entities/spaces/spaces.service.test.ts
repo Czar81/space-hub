@@ -18,20 +18,50 @@ describe("spacesService", () => {
 
     it("filters by type and minimum capacity", async () => {
       db.space.findMany.mockResolvedValue([]);
-      await spacesService.list({ type: SpaceType.HOT_DESK, minCapacity: 4 });
-      expect(where()).toMatchObject({ type: SpaceType.HOT_DESK, capacity: { gte: 4 } });
+      await spacesService.list({ type: SpaceType.INDIVIDUAL_DESK, minCapacity: 4 });
+      expect(where()).toMatchObject({ type: SpaceType.INDIVIDUAL_DESK, capacity: { gte: 4 } });
     });
 
-    it("excludes spaces with active bookings overlapping the UTC day", async () => {
+    it("date keeps only spaces free during the whole UTC day", async () => {
       db.space.findMany.mockResolvedValue([]);
       await spacesService.list({ date: "2030-01-01" });
-      expect(where().bookings).toEqual({
-        none: {
-          status: { not: BookingStatus.CANCELED },
-          startTime: { lt: new Date("2030-01-02T00:00:00.000Z") },
-          endTime: { gt: new Date("2030-01-01T00:00:00.000Z") },
+      expect(where().AND).toEqual([
+        {
+          bookings: {
+            none: {
+              status: { not: BookingStatus.CANCELED },
+              startTime: { lt: new Date("2030-01-02T00:00:00.000Z") },
+              endTime: { gt: new Date("2030-01-01T00:00:00.000Z") },
+            },
+          },
         },
-      });
+      ]);
+    });
+
+    it("startTime/endTime keep spaces free during that exact range only", async () => {
+      db.space.findMany.mockResolvedValue([]);
+      const startTime = new Date("2030-01-01T14:00:00Z");
+      const endTime = new Date("2030-01-01T16:00:00Z");
+      await spacesService.list({ startTime, endTime });
+      expect(where().AND).toEqual([
+        {
+          bookings: {
+            none: {
+              status: { not: BookingStatus.CANCELED },
+              startTime: { lt: endTime },
+              endTime: { gt: startTime },
+            },
+          },
+        },
+      ]);
+    });
+
+    it("includes bookings only when asked", async () => {
+      db.space.findMany.mockResolvedValue([]);
+      await spacesService.list({});
+      expect(db.space.findMany.mock.calls[0][0].include).toBeUndefined();
+      await spacesService.list({}, { includeBookings: true });
+      expect(db.space.findMany.mock.calls[1][0].include).toHaveProperty("bookings");
     });
   });
 
@@ -57,7 +87,7 @@ describe("spacesService", () => {
   it("create delegates to prisma", async () => {
     const data = {
       name: "A",
-      type: SpaceType.HOT_DESK,
+      type: SpaceType.INDIVIDUAL_DESK,
       capacity: 1,
       pricePerHour: 5,
       location: "L",
