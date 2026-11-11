@@ -6,7 +6,10 @@ const model = () => ({
   findMany: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
+  updateMany: vi.fn(),
   groupBy: vi.fn(),
+  aggregate: vi.fn(),
+  count: vi.fn(),
 });
 
 /** Mocked Prisma client. `$transaction` runs its callback with the same mock as `tx`. */

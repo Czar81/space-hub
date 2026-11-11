@@ -16,7 +16,7 @@ auth:bearer {
 
 body:json {
   {
-    "query": "{ occupancyAnalytics { totalSpaces } }"
+    "query": "{ occupancyAnalytics(from: \"2090-03-01\", to: \"2090-04-01\", groupBy: WEEK) { period { from to } totalSpaces bookedHours availableHours occupancyRate occupancyByLocation { location occupancyRate } occupancyBySpaceType { type occupancyRate } totalRevenue revenueByPeriod { periodStart revenue bookings } membershipsExpiringSoon topUsers { user { id name } bookings } } }"
   }
 }
 
@@ -26,6 +26,15 @@ assert {
 
 tests {
   test("returns analytics", function () {
-    expect(res.body.data.occupancyAnalytics.totalSpaces).to.be.a("number");
+    const a = res.body.data.occupancyAnalytics;
+    expect(a.totalSpaces).to.be.a("number");
+    expect(a.occupancyRate).to.be.within(0, 100);
+    expect(a.occupancyByLocation).to.be.an("array");
+    expect(a.occupancyBySpaceType).to.be.an("array");
+    expect(a.revenueByPeriod.length).to.be.greaterThan(0);
+    a.topUsers.forEach((t) => expect(t.bookings).to.be.a("number"));
+    for (let i = 1; i < a.topUsers.length; i++) {
+      expect(a.topUsers[i - 1].bookings).to.be.at.least(a.topUsers[i].bookings);
+    }
   });
 }

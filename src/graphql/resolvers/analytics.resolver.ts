@@ -1,61 +1,16 @@
-import prisma from "@/lib/prisma";
-import { BookingStatus } from "@prisma/client";
-import { AppError } from "@/core/utils/app-error";
+import { analyticsService } from "@/entities/analytics/analytics.service";
+import { analyticsQuerySchema } from "@/entities/analytics/analytics.schema";
 import { GraphQLContext } from "@/graphql/graphql.types";
-import { requireAdminUser } from "@/graphql/guards";
+import { parseInput, requireAdminUser, withoutNulls } from "@/graphql/guards";
 
-/** Query `occupancyAnalytics`. Admin only. */
+/** Query `occupancyAnalytics`. Admin only. Delegates to `analyticsService`. */
 export const analyticsResolvers = {
   /**
-   * Query `occupancyAnalytics`: global figures (spaces, bookings, revenue, expiring memberships). Admin only.
+   * Query `occupancyAnalytics(from, to, groupBy)`: occupancy (global, by location and by space type),
+   * revenue (total and per period), memberships expiring soon and top bookers. Admin only.
    */
-  occupancyAnalytics: async (_args: unknown, context: GraphQLContext) => {
+  occupancyAnalytics: async (args: Record<string, unknown>, context: GraphQLContext) => {
     requireAdminUser(context);
-
-    try {
-      const spaces = await prisma.space.findMany();
-      const totalSpaces = spaces.length;
-
-      const confirmedBookings = await prisma.booking.findMany({
-        where: { status: BookingStatus.CONFIRMED },
-      });
-
-      const occupancyRate = totalSpaces > 0 ? (confirmedBookings.length / totalSpaces) * 100 : 0;
-
-      const totalRevenue = confirmedBookings.reduce(
-        (sum, b) => sum + parseFloat(b.totalPrice?.toString() || "0"),
-        0
-      );
-
-      const soon = new Date();
-      soon.setDate(soon.getDate() + 7);
-      const expiringList = await prisma.membership.findMany({
-        where: { endDate: { lte: soon } },
-      });
-      const membershipsExpiringSoon = expiringList.length;
-
-      const topBookers = await prisma.booking.groupBy({
-        by: ["userId"],
-        _count: { id: true },
-        orderBy: { _count: { id: "desc" } },
-        take: 5,
-      });
-
-      const topUsersData = await prisma.user.findMany({
-        where: { id: { in: topBookers.map((b) => b.userId) } },
-      });
-
-      const topUsers = topUsersData.map((u) => u.name);
-
-      return {
-        totalSpaces,
-        occupancyRate,
-        totalRevenue,
-        membershipsExpiringSoon,
-        topUsers,
-      };
-    } catch {
-      throw AppError.internal("Unable to retrieve occupancy analytics");
-    }
+    return analyticsService.dashboard(parseInput(analyticsQuerySchema, withoutNulls(args)));
   },
 };
