@@ -16,12 +16,12 @@ auth:bearer {
 
 body:json {
   {
-    "query": "mutation { updateMembership(userId: \"{{memberId}}\", plan: \"GOLD\") { plan } }"
+    "query": "mutation { updateMembership(userId: \"{{memberId}}\", plan: GOLD) { plan } }"
   }
 }
 
 assert {
-  res.status: in 200,500
+  res.status: in 200,400,500
 }
 
 tests {

@@ -1,8 +1,50 @@
+"Access level of a user."
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+"Kind of bookable space: individual desk, private room or enterprise suite."
+enum SpaceType {
+  INDIVIDUAL_DESK
+  PRIVATE_ROOM
+  ENTERPRISE_SUITE
+}
+
+"Life cycle of a booking. CANCELED bookings never block a time slot."
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+}
+
+"Plan contracted by a user."
+enum MembershipPlan {
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+"Bucket size of the revenue series."
+enum RevenueGranularity {
+  DAY
+  WEEK
+  MONTH
+}
+
+"What happened to the availability of a space."
+enum AvailabilityAction {
+  "A booking now occupies the range."
+  BOOKED
+  "A booking was canceled and the range is free again."
+  RELEASED
+}
+
 type User {
   id: ID!
   name: String!
   email: String!
-  role: String!
+  role: UserRole!
 }
 
 type Booking {
@@ -11,7 +53,7 @@ type Booking {
   spaceId: Int!
   startTime: String!
   endTime: String!
-  status: String!
+  status: BookingStatus!
   totalPrice: String!
   createdAt: String!
   user: User
@@ -21,19 +63,20 @@ type Booking {
 type Space {
   id: ID!
   name: String!
-  type: String!
+  type: SpaceType!
   capacity: Int!
   pricePerHour: Int!
   location: String!
   isActive: Boolean!
   createdAt: String!
+  "Only returned to admins, null for anyone else."
   bookings: [Booking!]
 }
 
 type Membership {
   id: ID!
   userId: Int!
-  plan: String!
+  plan: MembershipPlan!
   startDate: String!
   endDate: String!
   user: User
@@ -45,18 +88,100 @@ type AuthPayload {
   refreshToken: String!
 }
 
-type OccupancyAnalytics {
+"Range covered by the analytics: [from, to)."
+type AnalyticsPeriod {
+  from: String!
+  to: String!
+}
+
+"Occupancy of the active spaces of one location (sede)."
+type LocationOccupancy {
+  location: String!
   totalSpaces: Int!
+  bookedHours: Float!
+  availableHours: Float!
+  "bookedHours / availableHours x 100 (0-100)."
   occupancyRate: Float!
+}
+
+"Occupancy of the active spaces of one type."
+type SpaceTypeOccupancy {
+  type: SpaceType!
+  totalSpaces: Int!
+  bookedHours: Float!
+  availableHours: Float!
+  "bookedHours / availableHours x 100 (0-100)."
+  occupancyRate: Float!
+}
+
+"Revenue of the confirmed bookings that start inside one bucket of the period."
+type RevenuePoint {
+  "First instant of the bucket (UTC). Weeks start on Monday."
+  periodStart: String!
+  revenue: Float!
+  bookings: Int!
+}
+
+type TopUser {
+  user: User!
+  "Confirmed bookings of the user inside the period."
+  bookings: Int!
+}
+
+"""
+Admin dashboard. Only CONFIRMED bookings count. Occupancy is booked hours over
+(active spaces x hours of the period), each booking clipped to the period.
+"""
+type OccupancyAnalytics {
+  period: AnalyticsPeriod!
+  totalSpaces: Int!
+  bookedHours: Float!
+  availableHours: Float!
+  "Global occupancy (0-100)."
+  occupancyRate: Float!
+  occupancyByLocation: [LocationOccupancy!]!
+  occupancyBySpaceType: [SpaceTypeOccupancy!]!
+  "Revenue of the confirmed bookings that start inside the period."
   totalRevenue: Float!
+  revenueByPeriod: [RevenuePoint!]!
+  "Memberships that are still valid and expire in the next 7 days."
   membershipsExpiringSoon: Int!
-  topUsers: [String!]!
+  "Up to 5 users with the most confirmed bookings in the period, most bookings first."
+  topUsers: [TopUser!]!
+}
+
+"Sent to subscribers every time a booking is created or canceled (through REST or GraphQL)."
+type SpaceAvailabilityEvent {
+  action: AvailabilityAction!
+  bookingId: ID!
+  spaceId: Int!
+  startTime: String!
+  endTime: String!
+  occurredAt: String!
 }
 
 type Query {
-  spaces(type: String, minCapacity: Int): [Space!]!
+  """
+  Active spaces. date (YYYY-MM-DD) keeps spaces free during the whole UTC day;
+  startTime + endTime (ISO 8601, together) keep spaces free during that exact range.
+  """
+  spaces(
+    type: SpaceType
+    minCapacity: Int
+    date: String
+    startTime: String
+    endTime: String
+  ): [Space!]!
   space(id: ID!): Space
-  occupancyAnalytics: OccupancyAnalytics!
+  """
+  Admin only. from/to accept YYYY-MM-DD or ISO date-times; to defaults to now and
+  from to 30 days before to (max 366 days).
+  """
+  occupancyAnalytics(
+    from: String
+    to: String
+    groupBy: RevenueGranularity = DAY
+  ): OccupancyAnalytics!
   bookings: [Booking!]!
   booking(id: ID!): Booking
   memberships: [Membership!]!
@@ -68,5 +193,13 @@ type Mutation {
   refreshToken(refreshToken: String!): AuthPayload!
   createBooking(spaceId: Int!, startTime: String!, endTime: String!): Booking!
   cancelBooking(id: ID!): Booking!
-  updateMembership(userId: ID!, plan: String!): Membership!
+  updateMembership(userId: ID!, plan: MembershipPlan!): Membership!
+}
+
+type Subscription {
+  """
+  Real-time availability (WebSocket, graphql-ws protocol, same path as HTTP).
+  Public; pass spaceId to follow a single space.
+  """
+  spaceAvailabilityChanged(spaceId: ID): SpaceAvailabilityEvent!
 }

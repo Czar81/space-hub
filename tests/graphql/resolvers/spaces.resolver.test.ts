@@ -1,38 +1,64 @@
 import { describe, it, expect, vi } from "vitest";
 import { SpaceType, UserRole } from "@prisma/client";
-import prisma from "@/lib/prisma";
 import { spacesResolvers } from "@/graphql/resolvers/spaces.resolver";
+import { spacesService } from "@/entities/spaces/spaces.service";
 import { makeSpace } from "../../helpers/factories";
 
-const db = vi.mocked(prisma, true);
+vi.mock("@/entities/spaces/spaces.service", () => ({
+  spacesService: { list: vi.fn(), getActiveById: vi.fn() },
+}));
+
+const service = vi.mocked(spacesService);
 const anon = { user: null };
 const adminCtx = {
   user: { userId: 1, email: "a@test.com", role: UserRole.ADMIN, type: "access" as const },
 };
 
 describe("spacesResolvers.spaces", () => {
-  it("returns only active spaces with optional filters", async () => {
-    db.space.findMany.mockResolvedValue([]);
-    await spacesResolvers.spaces({ type: SpaceType.HOT_DESK, minCapacity: 3 }, anon);
-    expect(db.space.findMany.mock.calls[0][0].where).toEqual({
-      isActive: true,
-      type: SpaceType.HOT_DESK,
-      capacity: { gte: 3 },
+  it("delegates to spacesService with the validated filters", async () => {
+    service.list.mockResolvedValue([]);
+    await spacesResolvers.spaces({ type: SpaceType.INDIVIDUAL_DESK, minCapacity: 3 }, anon);
+    expect(service.list).toHaveBeenCalledWith(
+      { type: SpaceType.INDIVIDUAL_DESK, minCapacity: 3 },
+      { includeBookings: false }
+    );
+  });
+
+  it("supports the date and time range filters, ignoring explicit nulls", async () => {
+    service.list.mockResolvedValue([]);
+    await spacesResolvers.spaces(
+      {
+        type: null,
+        date: "2030-01-01",
+        startTime: "2030-01-01T14:00:00Z",
+        endTime: "2030-01-01T16:00:00Z",
+      },
+      anon
+    );
+    expect(service.list.mock.calls[0][0]).toEqual({
+      date: "2030-01-01",
+      startTime: new Date("2030-01-01T14:00:00Z"),
+      endTime: new Date("2030-01-01T16:00:00Z"),
     });
   });
 
-  it("includes bookings only for admins", async () => {
-    db.space.findMany.mockResolvedValue([]);
-    await spacesResolvers.spaces({}, anon);
-    expect(db.space.findMany.mock.calls[0][0].include).toEqual({});
-
-    await spacesResolvers.spaces({}, adminCtx);
-    expect(db.space.findMany.mock.calls[1][0].include).toHaveProperty("bookings");
+  it("400 (not 500) for an invalid type or an incomplete range", async () => {
+    await expect(
+      spacesResolvers.spaces({ type: "OFFICE" as SpaceType }, anon)
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(
+      spacesResolvers.spaces({ startTime: "2030-01-01T14:00:00Z" }, anon)
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(service.list).not.toHaveBeenCalled();
   });
 
-  it("maps database failures to a 500 AppError", async () => {
-    db.space.findMany.mockRejectedValue(new Error("db down"));
-    await expect(spacesResolvers.spaces({}, anon)).rejects.toMatchObject({ statusCode: 500 });
+  it("includes bookings only for admins and formats dates", async () => {
+    service.list.mockResolvedValue([
+      makeSpace({ createdAt: new Date("2030-01-01T00:00:00Z") }),
+    ] as never);
+    const [space] = await spacesResolvers.spaces({}, adminCtx);
+    expect(service.list).toHaveBeenCalledWith({}, { includeBookings: true });
+    expect(space.createdAt).toBe("2030-01-01T00:00:00.000Z");
   });
 });
 
@@ -41,28 +67,12 @@ describe("spacesResolvers.space", () => {
     await expect(spacesResolvers.space({ id: "abc" }, anon)).rejects.toMatchObject({
       statusCode: 400,
     });
+    expect(service.getActiveById).not.toHaveBeenCalled();
   });
 
-  it("404 for missing or inactive spaces", async () => {
-    db.space.findUnique.mockResolvedValue(null);
-    await expect(spacesResolvers.space({ id: "1" }, anon)).rejects.toMatchObject({
-      statusCode: 404,
-    });
-    db.space.findUnique.mockResolvedValue(makeSpace({ isActive: false }));
-    await expect(spacesResolvers.space({ id: "1" }, anon)).rejects.toMatchObject({
-      statusCode: 404,
-    });
-  });
-
-  it("returns the active space", async () => {
-    db.space.findUnique.mockResolvedValue(makeSpace());
+  it("delegates to getActiveById (404 comes from the service)", async () => {
+    service.getActiveById.mockResolvedValue(makeSpace() as never);
     expect(await spacesResolvers.space({ id: "1" }, anon)).toMatchObject({ id: 1 });
-  });
-
-  it("500 on unexpected database errors", async () => {
-    db.space.findUnique.mockRejectedValue(new Error("db down"));
-    await expect(spacesResolvers.space({ id: "1" }, anon)).rejects.toMatchObject({
-      statusCode: 500,
-    });
+    expect(service.getActiveById).toHaveBeenCalledWith(1, { includeBookings: false });
   });
 });

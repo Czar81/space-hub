@@ -67,3 +67,15 @@ export const parseId = (id: string, label = "id"): number => {
 
   return value;
 };
+
+/**
+ * Drops arguments explicitly sent as `null`, so the Zod schemas treat them as omitted
+ * (GraphQL allows `null` for any optional argument, while the REST schemas expect `undefined`).
+ *
+ * @param args Raw resolver arguments.
+ * @returns A copy without the `null` values.
+ */
+export const withoutNulls = <T extends Record<string, unknown>>(args: T): Partial<T> =>
+  Object.fromEntries(
+    Object.entries(args ?? {}).filter(([, value]) => value !== null)
+  ) as Partial<T>;

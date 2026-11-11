@@ -12,7 +12,7 @@ post {
 
 body:json {
   {
-    "query": "{ spaces { id name location } }"
+    "query": "{ spaces { id name type location bookings { id } } }"
   }
 }
 
@@ -23,5 +23,9 @@ assert {
 tests {
   test("lists spaces without token", function () {
     expect(res.body.data.spaces).to.be.an("array");
+  });
+
+  test("bookings are hidden from anonymous users", function () {
+    res.body.data.spaces.forEach((s) => expect(s.bookings).to.equal(null));
   });
 }

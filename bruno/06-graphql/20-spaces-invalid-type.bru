@@ -1,0 +1,27 @@
+meta {
+  name: Spaces invalid type
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "{ spaces(type: OFFICE) { id } }"
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+tests {
+  test("an unknown SpaceType is a bad request, not a 500", function () {
+    expect(res.body.errors[0].extensions.code).to.equal("BAD_REQUEST");
+  });
+}

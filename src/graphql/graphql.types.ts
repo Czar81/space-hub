@@ -19,12 +19,24 @@ export interface IdArgs {
   id: string;
 }
 
-/** Filters of the `spaces` query. */
+/** Filters of the `spaces` query, validated with `listSpacesQuerySchema`. */
 export interface SpacesArgs {
   /** Return only spaces of this type. */
-  type?: SpaceType;
+  type?: SpaceType | null;
   /** Return only spaces that fit at least this many people. */
-  minCapacity?: number;
+  minCapacity?: number | null;
+  /** YYYY-MM-DD: return only spaces free during the whole UTC day. */
+  date?: string | null;
+  /** ISO date-time, sent with `endTime`: return only spaces free during the range. */
+  startTime?: string | null;
+  /** ISO date-time, sent with `startTime`. */
+  endTime?: string | null;
+}
+
+/** Arguments of the `spaceAvailabilityChanged` subscription. */
+export interface SpaceAvailabilityArgs {
+  /** Only receive events of this space; every space when omitted. */
+  spaceId?: string | null;
 }
 
 /** Arguments of the `updateMembership` mutation. */
