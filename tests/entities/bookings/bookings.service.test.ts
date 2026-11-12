@@ -3,6 +3,12 @@ import { BookingStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { bookingsService } from "@/entities/bookings/bookings.service";
 import { admin, makeBooking, makeSpace, member } from "../../helpers/factories";
+import { AvailabilityAction, publishAvailabilityChange } from "@/core/events/pubsub";
+
+vi.mock("@/core/events/pubsub", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/events/pubsub")>()),
+  publishAvailabilityChange: vi.fn(),
+}));
 
 const db = vi.mocked(prisma, true);
 const range = {
@@ -82,6 +88,20 @@ describe("bookingsService", () => {
         totalPrice: "67.50",
       });
     });
+
+    it("publishes a BOOKED event after the transaction, never on failure", async () => {
+      db.$queryRaw.mockResolvedValue([{ id: 1 }]);
+      db.space.findUnique.mockResolvedValue(makeSpace());
+      db.booking.findFirst.mockResolvedValue(makeBooking());
+      await bookingsService.create(member, range).catch(() => {});
+      expect(publishAvailabilityChange).not.toHaveBeenCalled();
+
+      const booking = makeBooking();
+      db.booking.findFirst.mockResolvedValue(null);
+      db.booking.create.mockResolvedValue(booking);
+      await bookingsService.create(member, range);
+      expect(publishAvailabilityChange).toHaveBeenCalledWith(AvailabilityAction.BOOKED, booking);
+    });
   });
 
   describe("list", () => {
@@ -121,14 +141,32 @@ describe("bookingsService", () => {
     it("409 when already canceled", async () => {
       db.booking.findUnique.mockResolvedValue(makeBooking({ status: BookingStatus.CANCELED }));
       await expect(bookingsService.cancel(member, 1)).rejects.toMatchObject({ statusCode: 409 });
-      expect(db.booking.update).not.toHaveBeenCalled();
+      expect(db.booking.updateMany).not.toHaveBeenCalled();
     });
 
-    it("sets status CANCELED", async () => {
+    it("sets status CANCELED only if it is not canceled yet (atomic)", async () => {
       db.booking.findUnique.mockResolvedValue(makeBooking());
-      db.booking.update.mockResolvedValue(makeBooking({ status: BookingStatus.CANCELED }));
-      await bookingsService.cancel(member, 1);
-      expect(db.booking.update.mock.calls[0][0].data).toEqual({ status: BookingStatus.CANCELED });
+      db.booking.updateMany.mockResolvedValue({ count: 1 });
+      const res = await bookingsService.cancel(member, 1);
+      expect(db.booking.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, status: { not: BookingStatus.CANCELED } },
+        data: { status: BookingStatus.CANCELED },
+      });
+      expect(res.status).toBe(BookingStatus.CANCELED);
+    });
+
+    it("publishes a RELEASED event", async () => {
+      db.booking.findUnique.mockResolvedValue(makeBooking());
+      db.booking.updateMany.mockResolvedValue({ count: 1 });
+      const canceled = await bookingsService.cancel(member, 1);
+      expect(publishAvailabilityChange).toHaveBeenCalledWith(AvailabilityAction.RELEASED, canceled);
+    });
+
+    it("a cancellation that loses the race gets 409 and publishes nothing", async () => {
+      db.booking.findUnique.mockResolvedValue(makeBooking());
+      db.booking.updateMany.mockResolvedValue({ count: 0 });
+      await expect(bookingsService.cancel(member, 1)).rejects.toMatchObject({ statusCode: 409 });
+      expect(publishAvailabilityChange).not.toHaveBeenCalled();
     });
   });
 });

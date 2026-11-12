@@ -3,6 +3,7 @@ import { BookingStatus, Prisma, UserRole } from "@prisma/client";
 import { AppError } from "@/core/utils/app-error";
 import { AuthUser } from "@/entities/auth/auth.types";
 import { CreateBookingBody, LockedSpaceRow } from "@/entities/bookings/bookings.types";
+import { AvailabilityAction, publishAvailabilityChange } from "@/core/events/pubsub";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -33,7 +34,8 @@ export const bookingsService = {
   },
 
   /**
-   * Creates a confirmed booking.
+   * Creates a confirmed booking and publishes a `BOOKED` availability event once it is committed.
+   * Publishing here (service layer) means REST and GraphQL bookings notify subscribers the same way.
    * The space row is locked inside a transaction, so concurrent requests for the same space are
    * serialized and only one of two overlapping bookings can succeed. Canceled bookings do not block the slot.
    *
@@ -44,7 +46,7 @@ export const bookingsService = {
    * @throws AppError 409 when the range overlaps an active booking.
    */
   async create(user: AuthUser, { spaceId, startTime, endTime }: CreateBookingBody) {
-    return prisma.$transaction(async (tx) => {
+    const booking = await prisma.$transaction(async (tx) => {
       // Locking the space row serializes concurrent bookings for the same space
       const [lockedSpace] = await tx.$queryRaw<LockedSpaceRow[]>`
         SELECT "id" FROM "Space" WHERE "id" = ${spaceId} FOR UPDATE
@@ -80,6 +82,10 @@ export const bookingsService = {
         include: bookingInclude,
       });
     });
+
+    // Only after the commit: a rolled back booking must never reach the subscribers
+    publishAvailabilityChange(AvailabilityAction.BOOKED, booking);
+    return booking;
   },
 
   /**
@@ -115,7 +121,9 @@ export const bookingsService = {
   },
 
   /**
-   * Cancels a booking (owner or admin). The slot becomes available again.
+   * Cancels a booking (owner or admin). The slot becomes available again and a `RELEASED` event is published.
+   * The status change is a conditional update (`status != CANCELED`), so when two cancellations race
+   * only one wins: the other gets 409 and no duplicate event is published.
    *
    * @param user Authenticated user.
    * @param id Booking id.
@@ -130,10 +138,18 @@ export const bookingsService = {
       throw AppError.conflict("Booking is already canceled");
     }
 
-    return prisma.booking.update({
-      where: { id },
+    // Atomic check-and-set: a concurrent cancellation between getById and here updates 0 rows
+    const { count } = await prisma.booking.updateMany({
+      where: { id, status: { not: BookingStatus.CANCELED } },
       data: { status: BookingStatus.CANCELED },
-      include: bookingInclude,
     });
+
+    if (count === 0) {
+      throw AppError.conflict("Booking is already canceled");
+    }
+
+    const canceled = { ...booking, status: BookingStatus.CANCELED };
+    publishAvailabilityChange(AvailabilityAction.RELEASED, canceled);
+    return canceled;
   },
 };
