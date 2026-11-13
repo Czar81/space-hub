@@ -118,7 +118,7 @@ The server will be available at `http://localhost:3000`, with the interactive Op
 
 | Method | Path | Description | Auth required |
 | --- | --- | --- | --- |
-| `GET` | `/api/spaces` | List active spaces. Filters: `type`, `minCapacity`, `date` (YYYY-MM-DD) | No |
+| `GET` | `/api/spaces` | List active spaces. Filters: `type`, `minCapacity`, `date` (YYYY-MM-DD, free all day), `startTime` + `endTime` (free during that range) | No |
 | `GET` | `/api/spaces/:id` | Get a single space by ID | No |
 | `POST` | `/api/spaces` | Create a new space | Admin |
 | `PUT` | `/api/spaces/:id` | Update a space | Admin |
@@ -183,9 +183,26 @@ The token must be sent in the `Authorization` header using the `Bearer` scheme. 
 
 ---
 
+## Space types
+
+`SpaceType` maps one to one to the client's catalog:
+
+| Value | Client name |
+| --- | --- |
+| `INDIVIDUAL_DESK` | Escritorio individual |
+| `PRIVATE_ROOM` | Sala privada |
+| `ENTERPRISE_SUITE` | Suite empresarial |
+
+### Availability filters (`GET /api/spaces` and GraphQL `spaces`)
+
+* `date=YYYY-MM-DD` keeps only spaces that are **free during the whole UTC day**. A space with any active booking that day, even a one hour one, is left out.
+* `startTime` + `endTime` (ISO 8601, sent together) keep only spaces with no active booking overlapping that exact range. Use it to book a few hours of a day that already has other bookings.
+
+---
+
 ## GraphQL
 
-A GraphQL endpoint is available at `/api/graphql` with an interactive GraphiQL playground. It reuses the same services as the REST API, so the rules are identical.
+A GraphQL endpoint is available at `/api/graphql` with an interactive GraphiQL playground. It reuses the same services as the REST API, so the rules are identical. `role`, `type`, `status` and `plan` are GraphQL enums, so invalid values are rejected with `BAD_REQUEST` before reaching the resolvers.
 
 | Operation | Access |
 | --- | --- |
@@ -193,6 +210,35 @@ A GraphQL endpoint is available at `/api/graphql` with an interactive GraphiQL p
 | `register`, `login`, `refreshToken` | Public |
 | `bookings`, `booking`, `createBooking`, `cancelBooking` | Authenticated (members only see their own) |
 | `memberships`, `updateMembership`, `occupancyAnalytics` | Admin |
+| `spaceAvailabilityChanged` (subscription) | Public, WebSocket |
+
+### Real-time availability (subscription)
+
+Subscriptions use the [`graphql-ws`](https://github.com/enisdenjo/graphql-ws) protocol over WebSocket on the same path: `ws://localhost:3000/api/graphql`. Only subscriptions are accepted over WebSocket; queries and mutations stay on HTTP.
+
+```graphql
+subscription {
+  spaceAvailabilityChanged(spaceId: 1) {   # omit spaceId to follow every space
+    action      # BOOKED | RELEASED
+    spaceId
+    bookingId
+    startTime
+    endTime
+    occurredAt
+  }
+}
+```
+
+Events are published by `bookingsService` after the booking is committed, so a booking created or canceled through REST or GraphQL notifies subscribers the same way. Events never include user data. The event bus is in memory (one process); running several instances would need a shared engine such as Redis PubSub.
+
+### Analytics
+
+`occupancyAnalytics(from, to, groupBy)` (admin) accepts `from`/`to` as `YYYY-MM-DD` or ISO date-times (`to` defaults to now, `from` to 30 days before, up to 366 days) and `groupBy: DAY | WEEK | MONTH` for the revenue series. Only `CONFIRMED` bookings count.
+
+* **Occupancy** = booked hours / (active spaces x hours of the period), with each booking clipped to the period, so it is always between 0 and 100. Returned globally, by location (`occupancyByLocation`) and by space type (`occupancyBySpaceType`).
+* **Revenue**: `totalRevenue` (aggregated in the database) and `revenueByPeriod`, one bucket per day/week/month (weeks start on Monday, UTC), including empty buckets.
+* `membershipsExpiringSoon`: still valid memberships that expire in the next 7 days.
+* `topUsers`: up to 5 `{ user, bookings }` with the most confirmed bookings in the period, most first.
 
 Send the `Authorization: Bearer <token>` header. Errors carry `extensions.code` (`UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `BAD_REQUEST`). Note that `express-graphql` answers HTTP 500 when an error nulls the whole `data`, so check `errors` in the body.
 
@@ -242,10 +288,10 @@ The target URL is `baseUrl` in `bruno/environments/local.bru` (default `http://l
 ├── prisma/                     # schema, migrations, seed
 ├── tests/                      # unit tests, same layout as src/
 ├── src/
-│   ├── core/                   # config, middlewares, jwt service, utils, shared schemas
+│   ├── core/                   # config, middlewares, jwt service, event bus, utils, shared schemas
 │   ├── docs/                   # OpenAPI spec + Swagger UI route
 │   ├── entities/<name>/        # <name>.routes / .service / .schema (zod) / .types
-│   ├── graphql/                # GraphQL schema, context and resolvers
+│   ├── graphql/                # GraphQL schema, context, resolvers and WebSocket server
 │   ├── lib/prisma.ts
 │   ├── app.ts
 │   └── server.ts
