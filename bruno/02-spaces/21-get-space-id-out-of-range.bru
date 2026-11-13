@@ -1,0 +1,23 @@
+meta {
+  name: Get space id out of range
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/spaces/99999999999
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 400
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

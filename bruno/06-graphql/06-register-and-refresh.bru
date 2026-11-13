@@ -1,0 +1,31 @@
+meta {
+  name: Register and refresh
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "mutation { register(name: \"Gql User\", email: \"gql.{{runId}}@example.com\", password: \"password123\") { refreshToken } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("gqlRefresh", res.body.data.register.refreshToken);
+}
+
+tests {
+  test("creates the user", function () {
+    expect(res.body.data.register.refreshToken).to.be.a("string");
+  });
+}

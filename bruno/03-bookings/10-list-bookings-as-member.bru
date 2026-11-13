@@ -1,0 +1,27 @@
+meta {
+  name: List bookings as member
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/bookings
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("member only sees own bookings", function () {
+    expect(res.body.length).to.be.greaterThan(0);
+    expect(res.body.every((b) => b.userId === bru.getVar("memberId"))).to.equal(true);
+    expect(JSON.stringify(res.body)).to.not.contain("password");
+  });
+}

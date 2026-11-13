@@ -1,0 +1,21 @@
+meta {
+  name: List spaces free range same day
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/api/spaces?startTime=2090-03-10T14:00:00Z&endTime=2090-03-10T16:00:00Z
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the space is free in the afternoon of a day it is booked in the morning", function () {
+    expect(res.body.some((s) => s.id === bru.getVar("spaceId"))).to.equal(true);
+  });
+}

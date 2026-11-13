@@ -1,0 +1,27 @@
+meta {
+  name: Cancel booking twice
+  type: http
+  seq: 19
+}
+
+patch {
+  url: {{baseUrl}}/api/bookings/{{bookingId}}/cancel
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+assert {
+  res.status: eq 409
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

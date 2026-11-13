@@ -1,0 +1,36 @@
+meta {
+  name: Create booking success
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+body:json {
+  {
+    "query": "mutation { createBooking(spaceId: {{spaceId}}, startTime: \"2091-04-01T10:00:00Z\", endTime: \"2091-04-01T11:00:00Z\") { id status totalPrice space { id } } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("gqlBookingId", res.body.data.createBooking.id);
+}
+
+tests {
+  test("creates the booking", function () {
+    expect(res.body.data.createBooking.status).to.equal("CONFIRMED");
+    expect(Number(res.body.data.createBooking.totalPrice)).to.equal(20);
+  });
+}

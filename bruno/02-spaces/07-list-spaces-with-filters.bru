@@ -1,0 +1,22 @@
+meta {
+  name: List spaces with filters
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/spaces?type=PRIVATE_ROOM&minCapacity=6
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("every result matches the filters", function () {
+    expect(res.body.length).to.be.greaterThan(0);
+    expect(res.body.every((s) => s.type === "PRIVATE_ROOM" && s.capacity >= 6)).to.equal(true);
+  });
+}

@@ -1,0 +1,33 @@
+meta {
+  name: Update membership as member forbidden
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/api/memberships/{{memberId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+body:json {
+  {
+    "plan": "ENTERPRISE"
+  }
+}
+
+assert {
+  res.status: eq 403
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

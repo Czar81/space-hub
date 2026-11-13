@@ -1,0 +1,31 @@
+meta {
+  name: Update membership invalid plan
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "query": "mutation { updateMembership(userId: \"{{memberId}}\", plan: GOLD) { plan } }"
+  }
+}
+
+assert {
+  res.status: in 200,400,500
+}
+
+tests {
+  test("is a bad request", function () {
+    expect(res.body.errors[0].extensions.code).to.equal("BAD_REQUEST");
+  });
+}

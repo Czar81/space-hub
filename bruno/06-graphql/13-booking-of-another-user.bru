@@ -1,0 +1,31 @@
+meta {
+  name: Booking of another user
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+body:json {
+  {
+    "query": "query { booking(id: \"{{otherBookingId}}\") { id } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("is not found", function () {
+    expect(res.body.errors[0].extensions.code).to.equal("NOT_FOUND");
+  });
+}

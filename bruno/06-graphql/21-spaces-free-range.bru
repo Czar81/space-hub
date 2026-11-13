@@ -1,0 +1,29 @@
+meta {
+  name: Spaces free range
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "{ spaces(type: PRIVATE_ROOM, startTime: \"2090-03-10T14:00:00Z\", endTime: \"2090-03-10T16:00:00Z\") { id type } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("filters by type and range through spacesService", function () {
+    const spaces = res.body.data.spaces;
+    expect(spaces.some((s) => String(s.id) === String(bru.getVar("spaceId")))).to.equal(true);
+    spaces.forEach((s) => expect(s.type).to.equal("PRIVATE_ROOM"));
+  });
+}

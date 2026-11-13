@@ -1,0 +1,34 @@
+meta {
+  name: Create space invalid body
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/spaces
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "name": "",
+    "type": "NOPE"
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

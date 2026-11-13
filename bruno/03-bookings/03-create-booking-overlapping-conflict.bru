@@ -1,0 +1,35 @@
+meta {
+  name: Create booking overlapping conflict
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/bookings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{otherToken}}
+}
+
+body:json {
+  {
+    "spaceId": {{spaceId}},
+    "startTime": "2090-03-10T11:00:00Z",
+    "endTime": "2090-03-10T13:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Get booking not found
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/bookings/999999
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{memberToken}}
+}
+
+assert {
+  res.status: eq 404
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

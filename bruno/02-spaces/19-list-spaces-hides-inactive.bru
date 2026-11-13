@@ -1,0 +1,21 @@
+meta {
+  name: List spaces hides inactive
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/spaces
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("deactivated space is not listed", function () {
+    expect(res.body.some((s) => s.id === bru.getVar("tempSpaceId"))).to.equal(false);
+  });
+}

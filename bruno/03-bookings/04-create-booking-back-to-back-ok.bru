@@ -1,0 +1,37 @@
+meta {
+  name: Create booking back to back ok
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/bookings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{otherToken}}
+}
+
+body:json {
+  {
+    "spaceId": {{spaceId}},
+    "startTime": "2090-03-10T12:00:00Z",
+    "endTime": "2090-03-10T13:30:00Z"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("otherBookingId", res.body.id);
+}
+
+tests {
+  test("1.5h at 20/h costs 30.00", function () {
+    expect(Number(res.body.totalPrice)).to.equal(30);
+  });
+}

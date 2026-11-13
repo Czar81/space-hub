@@ -1,0 +1,27 @@
+meta {
+  name: Bookings without token
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "{ bookings { id } }"
+  }
+}
+
+assert {
+  res.status: in 200,500
+}
+
+tests {
+  test("is rejected", function () {
+    expect(res.body.errors[0].extensions.code).to.equal("UNAUTHORIZED");
+  });
+}

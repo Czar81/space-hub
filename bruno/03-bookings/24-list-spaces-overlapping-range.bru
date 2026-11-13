@@ -1,0 +1,21 @@
+meta {
+  name: List spaces overlapping range
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/api/spaces?startTime=2090-03-10T11:00:00Z&endTime=2090-03-10T11:30:00Z
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("a range overlapping an active booking leaves the space out", function () {
+    expect(res.body.some((s) => s.id === bru.getVar("spaceId"))).to.equal(false);
+  });
+}

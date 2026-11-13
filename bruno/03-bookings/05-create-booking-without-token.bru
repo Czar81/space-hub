@@ -1,0 +1,31 @@
+meta {
+  name: Create booking without token
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/bookings
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "spaceId": {{spaceId}},
+    "startTime": "2090-03-10T10:00:00Z",
+    "endTime": "2090-03-10T12:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 401
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Login success
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "mutation { login(email: \"admin@spacehub.com\", password: \"password123\") { token refreshToken user { role } } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("returns tokens", function () {
+    expect(res.body.data.login.token).to.be.a("string");
+    expect(res.body.data.login.user.role).to.equal("ADMIN");
+  });
+}

@@ -1,0 +1,23 @@
+meta {
+  name: List memberships without token
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/memberships
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}
+
+tests {
+  test("returns a JSON error body", function () {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(res.body.status).to.equal("error");
+    expect(res.body.message).to.be.a("string");
+  });
+}

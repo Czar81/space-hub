@@ -1,0 +1,27 @@
+meta {
+  name: Refresh token success
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "mutation { refreshToken(refreshToken: \"{{gqlRefresh}}\") { token } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("returns a new token", function () {
+    expect(res.body.data.refreshToken.token).to.be.a("string");
+  });
+}

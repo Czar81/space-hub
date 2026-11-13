@@ -1,0 +1,29 @@
+meta {
+  name: Refresh token success
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refreshToken": "{{adminRefresh}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("issues a new token pair", function () {
+    expect(res.body.token).to.be.a("string");
+    expect(res.body.refreshToken).to.be.a("string");
+    expect(res.body.user.email).to.equal(bru.getVar("adminEmail") || res.body.user.email);
+  });
+}

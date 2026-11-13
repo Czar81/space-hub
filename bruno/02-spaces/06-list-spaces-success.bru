@@ -1,0 +1,23 @@
+meta {
+  name: List spaces success
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/spaces
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("is public and lists only active spaces", function () {
+    expect(res.body).to.be.an("array");
+    expect(res.body.every((s) => s.isActive)).to.equal(true);
+    expect(res.body.some((s) => s.id === bru.getVar("spaceId"))).to.equal(true);
+  });
+}

@@ -1,0 +1,31 @@
+meta {
+  name: Spaces public
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/graphql
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "{ spaces { id name type location bookings { id } } }"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("lists spaces without token", function () {
+    expect(res.body.data.spaces).to.be.an("array");
+  });
+
+  test("bookings are hidden from anonymous users", function () {
+    res.body.data.spaces.forEach((s) => expect(s.bookings).to.equal(null));
+  });
+}
